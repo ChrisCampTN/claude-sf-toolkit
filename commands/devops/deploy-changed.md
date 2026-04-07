@@ -1,0 +1,312 @@
+---
+name: deploy-changed
+description: Build and execute targeted SF deployments from git changes — filters to deployable metadata, constructs source-dir commands, verifies deployment
+---
+
+# /deploy-changed — Deploy Changed Metadata
+
+Build and execute a targeted Salesforce deployment from git changes. Reads `git diff` to identify changed metadata files, filters to deployable types, constructs the `sf project deploy start` command with individual `--source-dir` flags, and runs it.
+
+**Arguments:** `$ARGUMENTS`
+
+Arguments can be:
+
+- Empty — detect changes automatically (unstaged + staged vs HEAD)
+- `staged` — only deploy staged changes
+- `commit {sha}` — deploy the files changed in a specific commit
+- `range {from}..{to}` — deploy files changed across a commit range
+- `branch {branch-name}` — deploy files changed between current branch and the named branch
+- `--dry-run` — append to any of the above to validate without deploying
+- `--target-org {alias}` — override the default target org (defaults to `{context.orgs.devAlias}`)
+
+Examples:
+
+```
+/deploy-changed
+/deploy-changed staged
+/deploy-changed commit abc1234
+/deploy-changed range HEAD~3..HEAD --dry-run
+/deploy-changed branch main --target-org MyDevSandbox
+```
+
+---
+
+## Resolution
+
+Dispatch the `sf-toolkit-resolve` agent. Use the returned context for all
+org references, team lookups, and path resolution in subsequent steps.
+If `missing` contains values this skill requires, stop and instruct the
+developer to run `/setup`.
+
+---
+
+## Step 0 — Preflight
+
+Invoke `/skill-preflight deploy-changed` to run the `git`, `org`, and `metadata` suites. Pass the resolved `--target-org` value so preflight checks the correct org.
+
+1. **Git status:** If the working tree is completely clean and no commit/range argument was given, report "Nothing to deploy" and exit.
+2. **Org connectivity:** If preflight reports the target org as unreachable, stop — cannot deploy without connectivity.
+3. **Production safety gate (Tier 2):** If `--target-org` is `{context.orgs.productionAlias}` or any alias containing `prod`/`production` (case-insensitive), display a prominent warning:
+   ```text
+   !! TARGET ORG IS PRODUCTION !!
+   You are about to deploy to Production. This bypasses the DevOps Center pipeline.
+   Only org-level settings metadata (DataCategoryGroup, etc.) should be deployed directly.
+   ```
+   Ask for explicit confirmation before proceeding.
+
+---
+
+## Step 1 — Identify Changed Files
+
+Based on the argument, get the list of changed files:
+
+### No argument (working tree changes):
+
+```bash
+git diff --name-only HEAD
+git diff --name-only --cached HEAD
+```
+
+Combine both lists (deduplicate).
+
+### `staged` argument:
+
+```bash
+git diff --name-only --cached HEAD
+```
+
+### `commit {sha}` argument:
+
+```bash
+git diff-tree --no-commit-id --name-only -r {sha}
+```
+
+### `range {from}..{to}` argument:
+
+```bash
+git diff --name-only {from}..{to}
+```
+
+### `branch {branch-name}` argument:
+
+```bash
+git diff --name-only {branch-name}...HEAD
+```
+
+---
+
+## Step 2 — Filter to Deployable Metadata
+
+**Use the metadata-validator script** for filtering and validation instead of manual file-by-file checks.
+
+First, check for the script locally, then fall back to the plugin template:
+
+```bash
+# Prefer local project script
+if [ -f scripts/metadata-validator.js ]; then
+  VALIDATOR="scripts/metadata-validator.js"
+else
+  # Fall back to plugin script-templates/
+  VALIDATOR="$(dirname "$(dirname "$(realpath "$0")")")/script-templates/metadata-validator.js"
+fi
+```
+
+Run the validator:
+
+```bash
+# Validate files from git diff (most common use case)
+node "$VALIDATOR" --git-diff
+
+# Validate specific files
+node "$VALIDATOR" --files "path1,path2,..."
+
+# JSON output for programmatic consumption
+node "$VALIDATOR" --git-diff --json
+
+# Summary only
+node "$VALIDATOR" --git-diff --summary
+```
+
+The script handles all filtering (non-deployable exclusions, standard object field detection), XML validation (duplicate elements, well-formedness, API version), and metadata type classification automatically.
+
+If no deployable files remain after filtering, report "No deployable metadata changes found" and list what was filtered out (so the user knows their changes are docs/scripts only).
+
+---
+
+## Step 3 — Metadata Validation
+
+Review the metadata-validator output from Step 2:
+
+- **Errors (exit code 1):** Duplicate XML elements, malformed XML, merge conflict markers. Fix before deploying.
+- **Warnings:** API version mismatches (informational — don't block deploy).
+- **Standard object fields:** Listed with the package.xml wildcard reminder.
+
+If errors are found, offer to auto-fix and re-run validation before continuing.
+
+---
+
+## Step 4 — Build Deploy Command
+
+Construct the `sf project deploy start` command with targeted `--source-dir` flags.
+
+### Grouping strategy:
+
+**Directories vs individual files:** If ALL files within a metadata subdirectory are changed (e.g., every field file under `{context.metadataPath}/objects/MyObject__c/fields/`), use the directory path instead of listing each file. This keeps the command shorter while remaining targeted.
+
+Otherwise, list each file individually.
+
+### Command construction:
+
+```bash
+sf project deploy start --target-org {target-org} {--dry-run if applicable} --source-dir "{path1}" --source-dir "{path2}" --source-dir "{path3}"
+```
+
+**Important formatting rules:**
+
+- Wrap paths containing spaces in double quotes
+- Use forward slashes in paths (bash shell on Windows)
+- Single-line command (PowerShell VS Code terminal compatibility)
+- Maximum ~20 `--source-dir` flags per command. If more than 20, split into batches and deploy sequentially.
+
+---
+
+## Step 5 — Preview and Confirm
+
+Show the user the full deployment plan before executing:
+
+```
+## Deploy Plan
+
+Target org: {alias}
+Mode: {Deploy / Dry-Run (validation only)}
+Changed files: {total count}
+Deployable files: {filtered count}
+Filtered out: {n} non-metadata files
+
+### Files to Deploy
+
+| # | Type | Path |
+|---|---|---|
+| 1 | Flow | {context.metadataPath}/flows/SomeFlow.flow-meta.xml |
+| 2 | CustomField | {context.metadataPath}/objects/Account/fields/Risk_Score__c.field-meta.xml |
+| ... | ... | ... |
+
+### Command
+{the full sf project deploy start command}
+
+### Filtered Out (not deployed)
+- docs/flows/batch/SomeFlow.md (documentation)
+- scripts/cleanup.sh (script)
+```
+
+Ask: "Deploy these {n} files to {target-org}?" Wait for confirmation.
+
+For `--dry-run` mode, note: "This is a validation-only run. No changes will be applied to the org."
+
+---
+
+## Step 6 — Execute Deploy
+
+Run the deploy command:
+
+```bash
+sf project deploy start --target-org {target-org} {flags} --source-dir "{path1}" --source-dir "{path2}" ...
+```
+
+### Monitor the result:
+
+**If the deploy succeeds:**
+Report the component success counts and any warnings.
+
+**If the deploy fails:**
+
+1. Parse the error output for specific component failures
+2. Report each failure with:
+   - Component name and type
+   - Error message
+   - File path
+3. Categorize the failures:
+   - **Dependency errors** — a referenced component doesn't exist in the target org. Suggest deploying dependencies first.
+   - **Validation errors** — field type mismatch, duplicate API name, etc. These need manual fixes.
+   - **Pre-existing failures** — errors on components NOT in your deploy list. These are org issues unrelated to your changes. Report them separately and note they're not caused by this deploy.
+4. If using `--dry-run` and validation passed: report success and suggest running without `--dry-run` to apply.
+
+---
+
+## Step 7 — Post-Deploy Verification (mandatory)
+
+Apply `superpowers:verification-before-completion` discipline: **no success claims without fresh evidence.** Deploy commands can report success without actually deploying metadata. Never trust exit codes alone.
+
+After a successful (non-dry-run) deploy:
+
+1. **Run `sf project deploy report`** to confirm the deployment completed:
+
+   ```bash
+   sf project deploy report --use-most-recent --target-org {target-org} --json
+   ```
+
+2. **Spot-check at least one deployed component** in the org to confirm the metadata actually landed:
+
+   | Metadata type   | Verification command                                                                                                                                |
+   | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Custom fields   | `sf sobject describe --sobject {ObjectName} --target-org {target-org}` — confirm the field appears                                                  |
+   | Flows           | `sf data query --query "SELECT Id, Status FROM Flow WHERE Definition.DeveloperName = '{FlowName}' AND Status = 'Active'" --target-org {target-org}` |
+   | Permission sets | `sf data query --query "SELECT Id FROM PermissionSet WHERE Name = '{PermSetName}'" --target-org {target-org}`                                       |
+   | Other types     | Use the most appropriate describe/query for that type                                                                                               |
+
+3. **Evidence gate:** Only report success if verification confirms the deploy landed. If verification fails or contradicts the deploy command output:
+   - Report the discrepancy with evidence (command output)
+   - Do NOT claim success
+   - Suggest: re-deploy with `--metadata` flag instead of `--source-dir`, or deploy individual files
+
+4. **Summarize results** (only after verification passes):
+
+   ```text
+   ## /deploy-changed Complete
+
+   Target org: {alias}
+   Status: Succeeded (verified)
+   Components deployed: {n}
+     - Flows: {n}
+     - Custom Fields: {n}
+     - Permission Sets: {n}
+     - ... (by type)
+   Verification: {component name} confirmed in org via {method}
+   Warnings: {n or "None"}
+
+   Files deployed:
+     {list}
+
+   Next steps:
+   - Commit these changes using /commit-commands:commit
+   - Associate with work item: /devops-commit {WI-NNNNNN} {sha}
+   ```
+
+5. **Suggest commit message** based on the deployed files — follow the patterns from recent commits (WI prefix if applicable, descriptive summary).
+
+---
+
+## Batch Mode (>20 files)
+
+If the deploy list exceeds 20 files:
+
+1. Group files by metadata type (flows, fields, permsets, etc.)
+2. Deploy each group as a separate command
+3. Report results for each batch
+4. If any batch fails, ask whether to continue with remaining batches or abort
+
+```
+Deploy batch 1/3: 15 Flows -> Succeeded
+Deploy batch 2/3: 8 Custom Fields -> Succeeded
+Deploy batch 3/3: 3 Permission Sets -> Failed (see errors below)
+```
+
+---
+
+## Safety Rails
+
+- **Never deploy to Production without explicit user confirmation** (Step 0 safety check)
+- **Never force-deploy** (`--ignore-errors` or similar) — if components fail, report them
+- **Never deploy `.env`, credentials, or config files** — these are always filtered out in Step 2
+- **Always show the command before running it** — the user should see exactly what will execute
+- **Respect `--dry-run`** — if the user asked for validation only, never auto-promote to a real deploy
