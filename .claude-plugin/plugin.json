@@ -1,0 +1,21 @@
+{
+  "name": "claude-sf-toolkit",
+  "description": "Reusable Salesforce DX skills, agents, and project scaffolding for Claude Code",
+  "version": "1.0.0",
+  "author": {
+    "name": "Chris Camp",
+    "email": "chris.camp@paybyhfa.com"
+  },
+  "homepage": "https://github.com/ChrisCampTN/claude-sf-toolkit",
+  "repository": "https://github.com/ChrisCampTN/claude-sf-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "salesforce",
+    "sfdx",
+    "devops-center",
+    "flows",
+    "apex",
+    "lwc",
+    "skills"
+  ]
+}

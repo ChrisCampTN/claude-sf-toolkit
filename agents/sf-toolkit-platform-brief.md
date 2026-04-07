@@ -1,3 +1,7 @@
+---
+description: Query a Salesforce production org to gather platform metadata and generate a comprehensive platform brief document
+---
+
 # SF Toolkit: Platform Brief Generator
 
 ## Your Job

@@ -1,3 +1,7 @@
+---
+description: Resolve project configuration from SF project files, org queries, and config — returns structured context JSON for all toolkit skills
+---
+
 # SF Toolkit: Config Resolver
 
 ## Your Job
