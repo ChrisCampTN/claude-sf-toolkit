@@ -1,0 +1,23 @@
+#!/bin/bash
+# claude-sf-toolkit pre-commit hook
+# 1. Run Prettier via lint-staged (if configured)
+# 2. Block force-app/ commits on main branch
+
+# Run lint-staged if available
+if command -v npx &> /dev/null && [ -f "package.json" ]; then
+  npx lint-staged 2>/dev/null
+fi
+
+# Block force-app/ commits on main
+BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  STAGED_FORCEAPP=$(git diff --cached --name-only | grep "^force-app/" || true)
+  if [ -n "$STAGED_FORCEAPP" ] && [ -z "$ALLOW_FORCEAPP_ON_MAIN" ]; then
+    echo "ERROR: force-app/ changes must go to WI branches via /devops-commit"
+    echo "Staged force-app files:"
+    echo "$STAGED_FORCEAPP"
+    echo ""
+    echo "Override with: ALLOW_FORCEAPP_ON_MAIN=1 git commit ..."
+    exit 1
+  fi
+fi

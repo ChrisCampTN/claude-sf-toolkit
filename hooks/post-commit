@@ -1,0 +1,36 @@
+#!/bin/bash
+# claude-sf-toolkit post-commit hook
+# 1. Detect flow changes and queue for /doc-flows
+# 2. Send Slack notification (if webhook configured)
+
+# Detect flow changes
+CHANGED_FLOWS=$(git diff-tree --no-commit-id --name-only -r HEAD | grep "force-app/main/default/flows/" | grep "\.flow-meta\.xml$" || true)
+
+if [ -n "$CHANGED_FLOWS" ]; then
+  # Queue changed flows for /doc-flows
+  echo "$CHANGED_FLOWS" >> .pending-docs.txt
+  sort -u -o .pending-docs.txt .pending-docs.txt
+
+  FLOW_COUNT=$(echo "$CHANGED_FLOWS" | wc -l | tr -d ' ')
+
+  # Skip Slack notification for [docs-only] commits
+  COMMIT_MSG=$(git log -1 --pretty=%s)
+  if [[ "$COMMIT_MSG" == "[docs-only]"* ]]; then
+    echo "$FLOW_COUNT flow(s) queued for /doc-flows (Slack notification skipped — docs-only commit)"
+    exit 0
+  fi
+
+  # Send Slack notification if webhook is configured
+  if [ -f ".env" ]; then
+    SLACK_WEBHOOK=$(grep "SLACK_WEBHOOK_URL" .env 2>/dev/null | cut -d'=' -f2)
+    if [ -n "$SLACK_WEBHOOK" ]; then
+      AUTHOR=$(git log -1 --pretty=%an)
+      curl -s -X POST "$SLACK_WEBHOOK" \
+        -H "Content-Type: application/json" \
+        -d "{\"text\":\"$AUTHOR committed $FLOW_COUNT flow change(s): $COMMIT_MSG\"}" \
+        > /dev/null 2>&1
+    fi
+  fi
+
+  echo "$FLOW_COUNT flow(s) queued for /doc-flows"
+fi
