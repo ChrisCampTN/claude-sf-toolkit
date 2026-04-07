@@ -1,0 +1,184 @@
+# CLAUDE.md
+
+## Project
+
+{{PROJECT_DESCRIPTION}}
+
+## Architecture Rules
+
+- **Configuration first, best solution wins.** Evaluate declarative/configuration approaches first (Flows, validation rules, formulas, platform features). But when code is the better solution — cleaner, more maintainable, more secure, or more performant — use code. Hybrid solutions are often the best answer. Use each tool for what it does best. Preferred hybrid patterns:
+  - **LWC → thin Apex → headless Flow:** LWC handles UI, a thin Apex controller provides secure data access and FLS enforcement, and headless autolaunched Flows contain the business logic. This keeps business rules configurable (admin-changeable via Flow) while getting proper UI and security layers.
+  - **Flow + Apex invocable action:** Flow orchestrates the process, Apex handles complex calculations, governor-limit-sensitive operations, or external callouts that Flows can't do cleanly.
+  - **LWC screen component in Flow:** Flow provides the screen structure and navigation, LWC provides rich UI where native Flow components are insufficient.
+- **Managed packages over custom code.** {{MANAGED_PACKAGE_NOTES}} Evaluate existing packages before building.
+- **License-aware.** {{LICENSE_TYPES}} Always check feature availability per license.
+- **Development standards.** All new metadata and code must follow [`docs/coding-standards.md`](docs/coding-standards.md) — covers Flow naming/design, fault handling, transaction integrity, object/field conventions, validation rules, and Apex standards.
+- **Build review process.** Every build session follows [`docs/build-review-process.md`](docs/build-review-process.md) — structured build reports, review modes per build mode, fix-pass discipline, five-question mid-build check, graduation quality gate, multi-mode integration checkpoints, and team feedback capture.
+- **Work batching by build mode.** When planning and assigning work (backlog grooming, sprint planning, `/backlog graduate`), batch changes by how they're built — not just by feature. Three build modes with different batching strategies:
+  - **Flow work (human-focused):** Deep manual work in Flow Builder. Batch by functional domain. Minimize context-switching. Assign as cohesive blocks to one person.
+  - **Metadata/code changes (agent-driven):** Apex, permission sets, objects, fields, LWC, validation rules. Claude agents build from specs. Batch by non-overlapping file domains to prevent conflicts — agents can work in parallel across `classes/`, `permissionsets/`, `lwc/`, `objects/`.
+  - **Config-only work (human builds, Claude validates):** Screen flows, reports, dashboards, Experience Cloud, approval processes. Human configures in the UI; Claude assists on design and validates each step via org queries (`sf sobject describe`, SOQL, `sf flow scan`, test execution). Batch by functional domain like Flow work.
+  - **Process/tooling work (focus-driven):** Skills, scripts, CLAUDE.md, memory, DevOps pipeline, onboarding docs. Batch as cohesive sessions — these changes feed into each other and benefit from sustained focus. Avoid interleaving with Salesforce metadata builds.
+- **Full-stack agent builds.** The LWC → thin Apex → headless Flow pattern is fully buildable by Claude agents from specs — LWC (JS/HTML/CSS), Apex controller, autolaunched Flow XML, FlowTests, and Apex tests. No manual Flow Builder work required for the initial build. This makes the hybrid architecture the most automatable stack. Business logic stays in the headless Flow so admins can modify rules later in Flow Builder without touching code.
+- **Team model: Claude builds, humans refine and verify.** Claude handles code and metadata generation from specs. Team members focus on: (1) requirement refinement and design, (2) testing and validation, (3) manual configuration (screen flows, reports, Experience Cloud, approval processes), and (4) review and approval of Claude-generated work. Skills and preflight checks provide guardrails so any team member can safely dispatch Claude builds.
+- **Agentforce scope boundary.** Agentforce agents handle intake, status queries, and execution-stage updates (assignment, In Progress, Done). Deep evaluation — effort sizing, complexity assessment, priority setting, architecture grooming — requires platform context (repo, design docs, org metadata) that only Claude Code can access. When designing Agentforce agents, scope them to operations they can perform with the data available in Salesforce records, not operations requiring codebase or architectural reasoning.
+- **SF-native data model design.** Prefer standard Salesforce relational features (lookups, junction objects, related lists, formula fields) over parsed text patterns (comma-separated IDs, JSON blobs, text fields storing names). If a design uses a text field where a lookup or relationship would work, the design document must justify why. See `docs/coding-standards.md` §8 for the full rule, pattern table, and exceptions.
+- **Two-phase spec validation.** Architecture decisions (build pattern, object model, integrations, security model, scope) are resolved during backlog grooming before assignment. Implementation details (field API names, error handling, test criteria, UI behavior, edge cases) are resolved at build time through iteration between the assigned team member and Claude. At build time, Claude should ask clarifying questions about implementation — but if an architecture gap surfaces, escalate rather than making the call.
+- **Hybrid script + Claude approach.** Skills use Node.js helper scripts in `scripts/` for deterministic work (parsing, formatting, date comparison, schema validation) and Claude for semantic work (classification, matching by meaning, audience inference, prioritization, overlap detection). Neither tool alone — the hybrid gets best results from each. Scripts output structured data (JSON); Claude reads it and applies judgment.
+- **Skill agent architecture.** Skills with independent sub-tasks should use purpose-built parallel agents for faster execution and better context isolation. Three layers: (1) **Skill file** (`commands/*.md`) orchestrates — resolves inputs, dispatches agents, collects results, runs synthesis. (2) **Agent prompt files** (`agents/{skill}-{agent}.md`) contain focused instructions — what to do, what files to read, what format to output. (3) **Reference data files** (`docs/platform-brief.md`, `MEMORY.md`, `backlog.yaml`) provide shared context — no hardcoded filters, categories, or org details in agent prompts. Agents use `{{variable}}` placeholders substituted by the skill at dispatch time. Failure handling: no retry, log and proceed with partial results.
+
+## Org & DevOps
+
+- **Target org alias:** Read from `.sf/config.json` → `target-org`
+- **Production org alias:** Read from `.sf/config.json` → `target-dev-hub`
+- **Metadata path:** Read from `sfdx-project.json` → `packageDirectories[0].path`
+- **API version:** Read from `sfdx-project.json` → `sourceApiVersion` (always match Production — run `sf org display --target-org {production} --json` to verify)
+- **Source format:** SFDX
+- After every successful deployment, commit against the mapped DevOps Center work item.
+- Never deploy directly to production. All work goes through dev sandbox → DevOps Center promotion.
+- {{ORG_SPECIFIC_DEVOPS_NOTES}}
+- **Exception — Org-level settings metadata:** Some metadata types are not source-tracked and won't appear in DevOps Center change detection. These may be deployed directly to production via `sf project deploy start --target-org {production}` after a dry-run validation. Always deploy to dev sandbox first, then production. Known org-level types requiring direct deploy: `DataCategoryGroup`, `DataCategoryVisibility`. Create a DevOps Center work item for tracking even though the deploy bypasses the pipeline.
+- **Git hooks are active.** Pre-commit runs `lint-staged` (Prettier formatting) and **blocks `force-app/` commits on main** — metadata must go to WI branches via `/devops-commit`. Override with `ALLOW_FORCEAPP_ON_MAIN=1` for emergencies only. Post-commit detects flow changes, queues them for `/doc-flows`, and sends a Slack notification. Requires a `.env` file at repo root with `SLACK_WEBHOOK_URL`.
+- **`[docs-only]` commit prefix** — Commits that only update flow `<description>` fields (no logic changes) should use the `[docs-only]` prefix. The post-commit hook will still queue changed flows to `.pending-docs.txt` but skip the Slack notification.
+
+## Key Commands
+
+```bash
+# Authorize the dev sandbox
+sf org login web --alias {target-org} --instance-url https://test.salesforce.com
+
+# Authorize production
+sf org login web --alias {target-dev-hub} --instance-url https://login.salesforce.com
+
+# Validate (dry run) before deploying
+sf project deploy start --target-org {target-org} --dry-run
+
+# Deploy metadata
+sf project deploy start --target-org {target-org}
+
+# Check deploy status (after async deploy)
+sf project deploy report --use-most-recent --target-org {target-org} --json
+
+# Preview what would deploy (local → org diff)
+sf project deploy preview --target-org {target-org}
+
+# Preview what changed in org (org → local diff)
+sf project retrieve preview --target-org {target-org}
+
+# Generate package.xml from source (handles standard object custom fields)
+sf project generate manifest --source-dir force-app/main/default --output-dir manifest/ --api-version {apiVersion}
+
+# Generate delta package.xml from git changes (sfdx-git-delta plugin)
+sf sgd source delta --from origin/main --to HEAD --output manifest/ --source force-app/
+
+# Scan flows for issues (lightning-flow-scanner plugin)
+sf flow scan --directory force-app/main/default/flows
+
+# Backup record-driven config to CSV (sfdmu plugin)
+sf sfdmu run --sourceusername {target-org} --targetusername csvfile --path config/{app}
+
+# Restore record-driven config after sandbox refresh (sfdmu plugin)
+sf sfdmu run --sourceusername csvfile --targetusername {target-org} --path config/{app}
+
+# Query org to verify components
+sf data query --query "SELECT Id, DeveloperName FROM CustomObject WHERE DeveloperName = '{object}'" --target-org {target-org}
+
+# Describe an object to check existing fields
+sf sobject describe --sobject {object} --target-org {target-org}
+```
+
+CLI commands must be **single-line** (PowerShell in VS Code terminal — no backslash line continuation).
+
+## MCP Servers (Claude Code & Claude Desktop)
+
+Two MCP servers are configured locally on each machine. They do **not** sync via VS Code Settings Sync or GitHub — manual setup required on every workstation.
+
+### Salesforce DX MCP Server
+
+The official Salesforce-maintained MCP server (`@salesforce/mcp`). Consolidates all Salesforce CLI operations into a single server with toolset-based access control. When active, Claude can:
+
+- Run SOQL queries live against the dev sandbox (no copy-paste into Developer Console)
+- Retrieve and deploy metadata without leaving VS Code or Claude Desktop
+- Execute Anonymous Apex for logic testing and data verification
+- Inspect object schema: describe objects, list fields, picklist values, relationships
+- Manage DevOps Center work items, commits, and promotions
+- Run Apex static analysis (code analyzer, antipattern scanning)
+- Manage users and permission sets
+
+**Enabled toolsets:** `data`, `metadata`, `orgs`, `testing`, `users`, `code-analysis`, `devops`, `scale-products`
+
+> **Guardrail: SF CLI MCP must only target the dev sandbox. Never configure it against Staging or Production. Staging and Production deployments are always human-initiated through DevOps Center.**
+
+### Filesystem MCP Server
+
+Provides Claude with structured file operations — batch reads, directory trees, file search, and move/copy. Scoped to explicitly allowed directories only.
+
+> **Security:** The server can only access directories listed in the `args` array. Scope it to this repo root — do not add broader paths.
+
+### MCP Config Locations
+
+| Tool           | Config file                                   |
+| -------------- | --------------------------------------------- |
+| Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
+| Claude Code    | `~/.claude.json` (scoped to project path)     |
+
+Both require the `cmd /c` wrapper around `npx` commands on Windows. Without it, MCP servers silently fail to connect. All `npx`-based servers use `@latest` to ensure automatic updates.
+
+## SF CLI Plugins
+
+Three plugins are installed alongside core SF CLI. Required on each developer machine.
+
+```bash
+sf plugins install lightning-flow-scanner   # Flow static analysis (missing fault paths, DML in loops, hardcoded IDs)
+sf plugins install sfdx-git-delta           # Delta package.xml generation from git diffs
+sf plugins install sfdmu                    # Salesforce Data Move Utility — config backup/restore across sandbox refreshes
+```
+
+## Claude Code Skills
+
+Skills are provided by the `claude-sf-toolkit` plugin. Run `/help` for the full skill reference.
+
+| Group          | Skills                                                                              |
+| -------------- | ----------------------------------------------------------------------------------- |
+| SF DevOps      | `/deploy-changed`, `/devops-commit`, `/detect-drift`, `/validate-build`, `/package-audit`, `/test-flows`, `/wi-sync` |
+| Documentation  | `/release-review`, `/doc-flows`, `/doc-components`, `/platform-review`, `/tooling-review`, `/design-review` |
+| Process        | `/backlog`, `/start-day`, `/wrap-up`, `/skill-preflight`, `/lookback`               |
+| Meta           | `/setup`, `/help`                                                                   |
+
+**Skill chaining:** `/start-day` opens the session with a prioritized plan from memory, git, calendar, email, and Slack. `/deploy-changed` deploys metadata and suggests a commit. `/devops-commit` cherry-picks that commit onto the WI branch. `/skill-preflight` validates before any of them run (called with a skill name, it maps to the relevant check suites automatically). `/detect-drift` finds org changes → retrieve → `/deploy-changed` pushes to dev sandbox → `/devops-commit` associates with a work item. `/wrap-up` runs at end-of-session to catch uncommitted work and surface maintenance tasks. `/backlog` manages the planning layer upstream of DevOps Center. `/backlog graduate` invokes `/design-review BL-NNNN` as a graduation gate — design doc must pass accuracy review before WI creation proceeds.
+
+{{DATA_MODEL_SUMMARY}}
+
+## Critical Warnings
+
+- **Standard object custom fields require explicit package.xml entries.** The `CustomObject *` wildcard does NOT capture customizations on Account, Contact, Lead, Opportunity, Case, Task. Use `sf project generate manifest --source-dir` to auto-generate a complete manifest, or `sfdx-git-delta` for delta manifests.
+- **Field API names must be validated** via Developer Console SOQL or `sf data query` before locking into specs.
+- **SF CLI MCP write operations require org confirmation.** Before any deploy, Anonymous Apex, or destructive operation via MCP, confirm the target org alias is the dev sandbox. Read operations (SOQL, describe, retrieve to local) can proceed freely.
+- **Production read-only access allowed.** Read-only API calls (`sf api request rest` GET, `sf data query`, `sf sobject describe`) may target production for configuration verification. No writes, deploys, or Anonymous Apex against Production.
+{{PROJECT_SPECIFIC_WARNINGS}}
+
+## Working With Claude
+
+- **Design questions:** Show tradeoffs. Cite Salesforce documentation where relevant. Challenge assumptions if a better approach exists.
+- **Spec outputs:** Produce admin-ready specs with field API names, flow logic, and implementation notes.
+- **Live-org tasks (SF CLI MCP active):** Read operations are free to run. Confirm org alias before any write.
+- **Be direct and actionable.** Concise outputs preferred.
+- **Memory hygiene:** Actively maintain the memory system between sessions — merge overlapping memories, split files that grow too long, remove stale entries, and log recurring errors with classification (deterministic vs infrastructure). When a pattern emerges that belongs in CLAUDE.md, propose the edit directly.
+
+## Shared Memory Architecture
+
+Project memory uses a **two-tier system**:
+
+**Shared tier** — `.claude/memory/` (repo-tracked, available to all developers on `git pull`)
+
+- `.claude/memory/MEMORY.md` — canonical shared index. **Always read this file at the start of each session** to load project context.
+- Contains: project state, WI status, feedback patterns, architecture decisions, external references, team member profiles.
+- When writing `project`, `feedback`, or `reference` type memories, write here — not to the local memory path.
+
+**Personal tier** — `~/.claude/projects/.../memory/` (local machine only)
+
+- Contains: personal preferences, timezone, machine-specific notes (`user` type memories about yourself).
+- Each developer maintains their own minimal local `MEMORY.md` stub that points to the shared tier.
+- `user_timezone.md` and similar personal files stay here.
+
+**Write rule:** `project` / `feedback` / `reference` → `.claude/memory/` + update `.claude/memory/MEMORY.md`. `user` (personal) → local `~/.claude/.../memory/`.

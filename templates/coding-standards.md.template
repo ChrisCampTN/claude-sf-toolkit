@@ -1,0 +1,426 @@
+<!-- Scaffolded by claude-sf-toolkit. Customize for your project. -->
+
+# Development Standards
+
+## Philosophy
+
+**Declarative first.** Flow > Validation Rule > Formula > Apex. Apex is a last resort. When Apex is required, follow Part 2 of this document.
+
+This document defines the target state. Existing metadata is not required to be retroactively renamed or refactored, but all new and modified components must follow these standards.
+
+### Verification Stage
+
+Each section is tagged with when it can be verified:
+
+- **Design** — checkable in the design document before build begins. `/design-review` and `/backlog graduate` enforce these.
+- **Build** — checkable only when actual code or metadata exists. Enforced during build sessions and `/validate-build`.
+
+New sections added to this document must include a `**Verify:** Design | Build` line.
+
+---
+
+## Part 1: Declarative Standards
+
+### 1. Flow Naming Conventions
+
+**Verify:** Design — flow API names appear in design docs.
+
+All flow names use **snake_case** (underscores between words). Prefix by flow type:
+
+| Flow Type                      | Prefix                     | Example                           |
+| ------------------------------ | -------------------------- | --------------------------------- |
+| Record-Triggered (After Save)  | _(none — object + action)_ | `Billing_Account_Cancel`          |
+| Record-Triggered (Before Save) | `Before_Save_`             | `Before_Save_EOM_Balance`         |
+| Batch (data processing)        | `Batch_`                   | `Batch_Daily_Provider_Payments`   |
+| Scheduled (time-triggered)     | `Scheduled_`               | `Scheduled_Account_Rollups`       |
+| Screen Flow                    | `Screen_`                  | `Screen_Add_New_Payment_Method`   |
+| Subflow                        | `Subflow_`                 | `Subflow_Validate_Payment_Method` |
+| API-triggered                  | `API_`                     | `API_Application_Created`         |
+
+Both `Batch_` and `Scheduled_` are valid — `Batch_` for bulk data processing jobs, `Scheduled_` for time-triggered orchestration.
+
+### 2. Flow Design Standards
+
+**Verify:** Design — flow logic, null checks, and DML patterns are specified in design docs.
+
+- **Descriptions required** on every flow: the problem being solved, objects touched, and invocation points.
+- **Null check after every Get Records** — add a Decision element checking emptiness before acting on results.
+- **Fault paths required** on every DML and action element (see [Fault Handling](#3-flow-fault-handling)).
+- **No hard-coded IDs** — use Custom Metadata Types or DeveloperName lookups for Record Type IDs, Queue IDs, Profile IDs.
+- **No DML or Get Records inside loops** — use collection variables and In/Not In operators.
+- **Before-Save over After-Save** when updating the triggering record (significantly faster, same transaction).
+- **Subflows for reuse** — any logic repeated in 2+ flows becomes a subflow.
+- **Element API naming** — descriptive, matches element label (e.g., `Get_Active_Billing_Accounts`, `Decision_Has_Results`).
+- **Variable naming** — camelCase, include descriptions on every variable.
+
+### 3. Flow Fault Handling
+
+**Verify:** Design — fault handling approach must be specified for each flow in the design doc.
+
+Every DML and action element must have a `faultConnector`. Two standardized error-handling subflows, split by audience:
+
+#### Non-Screen Errors — `Subflow_Error_Handler`
+
+Standardized, structured logging for troubleshooting and pattern identification. Used by record-triggered, scheduled, batch, and API flows.
+
+**Pattern (every faulting element):**
+
+1. **Assignment** — capture `$Flow.FaultMessage`, element name, flow API name, timestamp, running user, record ID
+2. **Call `Subflow_Error_Handler`** with standardized inputs:
+
+| Variable          | Type | Description                                                |
+| ----------------- | ---- | ---------------------------------------------------------- |
+| `varFlowName`     | Text | API name of the calling flow                               |
+| `varElement`      | Text | Element that faulted                                       |
+| `varErrorMessage` | Text | `$Flow.FaultMessage`                                       |
+| `varRecordId`     | Text | Triggering record ID (optional)                            |
+| `varSeverity`     | Text | Info / Warning / Error / Critical                          |
+| `varCategory`     | Text | Data / Integration / Permission / Governor_Limit / Unknown |
+
+3. Subflow creates a **Flow_Error_Log\_\_c** record (queryable, reportable)
+4. Subflow sends notification (Slack, email, or Custom Notification — customize per project)
+5. Critical-severity errors additionally fire a Custom Notification
+
+#### Screen-Facing Errors — `Subflow_Screen_Error_Handler`
+
+User-friendly error experience. Design may vary by flow context, but all screen error handlers must:
+
+1. **Log the error** — call `Subflow_Error_Handler` first (all errors are logged regardless of audience)
+2. **Display a contextual error screen** tailored to the user type:
+   - External users (Community): generic, reassuring message + "try again" guidance
+   - Internal users: element name + error detail for self-service troubleshooting
+3. Screen layout, messaging, and retry options may be customized per flow — the logging step is non-negotiable
+
+### 4. Flow Transaction Integrity
+
+**Verify:** Design — transaction boundaries and DML ordering must be specified for complex flows.
+
+Salesforce flows have implicit transaction boundaries. Understand them to prevent partial processing.
+
+| Flow Type                      | Transaction Scope                  | Rollback Behavior                                                                                                             |
+| ------------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Before-Save (Record-Triggered) | Same transaction as triggering DML | Full auto-rollback on unhandled fault — safest                                                                                |
+| After-Save (Record-Triggered)  | Same transaction as triggering DML | Unhandled fault rolls back everything. Caught fault (fault path) allows trigger record to save but downstream DML may be lost |
+| Screen Flow                    | New transaction per screen render  | DML before a screen is committed when the next screen loads — cannot roll back prior screens                                  |
+| Autolaunched (invoked)         | Inherits caller's transaction      | Rolls back with caller on unhandled fault                                                                                     |
+| Scheduled / Batch              | One transaction per batch          | Failed records don't affect others in the batch                                                                               |
+
+**Design rules:**
+
+1. **Validate before you write.** Perform all Get Records, Decisions, and validation logic BEFORE any Create/Update/Delete. Never interleave reads and writes.
+
+2. **Batch DML at the end.** Group all DML operations at the end of the flow path. This minimizes the window where a mid-flow fault leaves partial data.
+
+3. **Screen flow checkpoint pattern.** Collect all user input across screens BEFORE performing any DML. Perform all DML on the final screen submission, not between screens. If DML must occur mid-flow (e.g., save draft), use a status field so partial records are identifiable. Display a confirmation screen AFTER all DML succeeds.
+
+4. **Callout-first pattern.** When a flow makes external API callouts AND performs DML: make the callout FIRST, perform DML only after a successful response. Never put DML before a callout.
+
+5. **Idempotency for batch/scheduled flows.** Use upsert (match by external ID) instead of create where possible. Check for existing records before creating to prevent duplicates on retry.
+
+6. **Fault path does not equal rollback.** When a fault path catches an error, prior DML in that transaction is NOT automatically rolled back. If Record A must not exist without Record B, add compensating logic in the fault path or restructure to validate before any DML.
+
+### 5. Flow Element Naming
+
+**Verify:** Build — element names only exist in flow XML.
+
+Prefix element API names by type for readability:
+
+| Element Type   | Prefix      | Example                         |
+| -------------- | ----------- | ------------------------------- |
+| Get Records    | `Get_`      | `Get_Active_Billing_Accounts`   |
+| Create Records | `Create_`   | `Create_BSE_Record`             |
+| Update Records | `Update_`   | `Update_Billing_Account_Status` |
+| Delete Records | `Delete_`   | `Delete_Draft_Transactions`     |
+| Decision       | `Decision_` | `Decision_Has_Results`          |
+| Loop           | `Loop_`     | `Loop_Each_Transaction`         |
+| Assignment     | `Assign_`   | `Assign_Default_Values`         |
+| Subflow        | `Call_`     | `Call_Subflow_Error_Handler`    |
+| Action         | `Action_`   | `Action_Send_Notification`      |
+
+### 6. Custom Object Naming
+
+**Verify:** Design — object API names appear in design docs.
+
+- **PascalCase with underscores** between word groups: `Billing_Account__c`, `Portfolio_Snapshot__c`
+- **Singular nouns** (not plural): `Application__c` not `Applications__c`
+- Acronym prefixes allowed for initiative-scoped objects: `PRA_Portfolio_Snapshot__c`
+- Labels match API name pattern (spaces instead of underscores)
+
+### 7. Custom Field Naming
+
+**Verify:** Design — field API names appear in design docs.
+
+- **Snake_Case** with underscores between words: `Risk_Score__c`, `Provider_Risk_Flag__c`
+- Acronyms stay uppercase: `API_Completed__c`, `ACH_Clear_Date__c`
+- **Descriptions required** on all new fields — document the field's purpose
+- Help text recommended for user-facing fields on page layouts
+
+### 8. Data Model Design — SF-Native First
+
+**Verify:** Design — field types, relationships, and justifications for exceptions are in the design doc.
+
+When designing custom objects and fields, **prefer standard Salesforce relational features over parsed text patterns**. If a standard SF capability (lookups, junction objects, related lists, formula fields, roll-up summaries) can meet the requirement, use it. Text fields with comma-separated IDs, JSON blobs, or values that require parsing are a code smell — they sacrifice reporting, referential integrity, and platform automation.
+
+**Design rule:** If a design uses a text field where a lookup, junction object, or standard relationship would work, the design document must include a justification explaining why the standard approach was rejected. This justification is subject to review before the item graduates to Ready.
+
+| Pattern                    | Avoid                                   | Prefer                                        |
+| -------------------------- | --------------------------------------- | --------------------------------------------- |
+| Cross-object references    | Text field with comma-separated IDs     | Lookup or Master-Detail relationship          |
+| Many-to-many relationships | Text field with delimited values        | Junction object with two M-D or Lookup fields |
+| User references            | Text field with name string             | Lookup(User)                                  |
+| Status automation          | Manual status sync / external scripts   | Record-triggered flows on related objects     |
+| Archival state             | Separate checkbox mirroring status      | Status picklist value + list view filters     |
+| Notes / activity history   | Custom child object duplicating Chatter | Feed Tracking + FeedItem API (test first)     |
+
+**Exceptions that justify text over lookups:**
+
+- External system identifiers that don't map to a Salesforce record (e.g., GitHub commit SHAs, external ticket numbers)
+- Polymorphic references spanning multiple unrelated objects where a single lookup can't work
+- Display-only values that are never queried, reported on, or used in automation
+
+### 9. Validation Rule Standards
+
+**Verify:** Design — VR names, formulas, and error messages are specified in design docs.
+
+- **Naming:** `VR{NN}_{DescriptiveName}` per object (e.g., `VR01_AmountMustMatchTotal`)
+- Sequential numbering within each object
+- **Error messages:** user-friendly, include rule code suffix: `"Amount must equal total. [VR01]"`
+- Display error on the specific field when possible
+- One rule per business requirement — don't combine unrelated checks
+- Use `ISCHANGED()`, `ISNEW()`, and `PRIORVALUE()` to avoid blocking edits on unrelated fields
+
+---
+
+## Part 2: Apex Standards
+
+_When Apex is required (after exhausting declarative options), follow these conventions._
+
+### 10. Naming Conventions
+
+**Verify:** Design — class and controller names appear in design docs when Apex is specified.
+
+| Element          | Convention                 | Example                      |
+| ---------------- | -------------------------- | ---------------------------- |
+| Class            | UpperCamelCase             | `AccountTriggerHandler`      |
+| Method           | lowerCamelCase, verb-first | `processAccount()`           |
+| Variable         | lowerCamelCase             | `billingAccounts`            |
+| Constant         | UPPER_SNAKE_CASE           | `MAX_RETRY_COUNT`            |
+| Trigger          | `{Object}Trigger`          | `AccountTrigger`             |
+| Trigger Handler  | `{Object}TriggerHandler`   | `AccountTriggerHandler`      |
+| Test Class       | `Test_{ClassName}`         | `Test_AccountTriggerHandler` |
+| Controller       | `{Name}Controller`         | `CommunitiesLoginController` |
+| Invocable Action | Descriptive verb phrase    | `InvocableScheduleFlow`      |
+
+### 11. Formatting
+
+**Verify:** Build — code formatting only exists in source files.
+
+- **2-space indentation**, no tabs
+- Opening brace on the same line as the statement
+- Single blank line between methods
+- Explicit access modifiers on every class and method (`public`, `private`, `global` only when required)
+- **`with sharing` by default**; `without sharing` only with documented justification; `inherited sharing` for utility classes
+
+### 12. Class Headers
+
+**Verify:** Build — class headers only exist in source files.
+
+JSDoc-style block comment at the top of every class:
+
+```apex
+/**
+ * @author      Developer Name
+ * @description Handles Account trigger logic for risk flag evaluation
+ * @testClass   Test_AccountTriggerHandler
+ */
+public with sharing class AccountTriggerHandler {
+```
+
+Required tags: `@author`, `@description`, `@testClass`. For Invocable classes, add `@inputs` and `@outputs` describing flow-facing parameters.
+
+### 13. Trigger Handler Pattern
+
+**Verify:** Design — trigger framework usage is specified when Apex triggers are in scope.
+
+One trigger per object. The trigger file is a thin delegate — no logic:
+
+```apex
+trigger AccountTrigger on Account(before insert, after insert, after update) {
+  AccountTriggerHandler.getInstance().fire();
+}
+```
+
+The handler class uses a **singleton with boolean recursion guards**:
+
+```apex
+public with sharing class AccountTriggerHandler {
+  private static AccountTriggerHandler instance;
+  private static Boolean isBeforeExecuting = false;
+  private static Boolean isAfterExecuting = false;
+
+  public static AccountTriggerHandler getInstance() {
+    instance = (instance == null) ? new AccountTriggerHandler() : instance;
+    return instance;
+  }
+
+  public void fire() {
+    if (Trigger.isBefore) {
+      if (!isBeforeExecuting) {
+        isBeforeExecuting = true;
+        if (Trigger.isInsert)
+          beforeInsert();
+        if (Trigger.isUpdate)
+          beforeUpdate();
+        if (Trigger.isDelete)
+          beforeDelete();
+        isBeforeExecuting = false;
+      }
+    }
+    if (Trigger.isAfter) {
+      if (!isAfterExecuting) {
+        isAfterExecuting = true;
+        if (Trigger.isInsert)
+          afterInsert();
+        if (Trigger.isUpdate)
+          afterUpdate();
+        if (Trigger.isDelete)
+          afterDelete();
+        if (Trigger.isUndelete)
+          afterUndelete();
+        isAfterExecuting = false;
+      }
+    }
+  }
+
+  private void beforeInsert() {
+    /* logic here */
+  }
+  private void beforeUpdate() {
+    /* logic here */
+  }
+  private void beforeDelete() {
+    /* logic here */
+  }
+  private void afterInsert() {
+    /* logic here */
+  }
+  private void afterUpdate() {
+    /* logic here */
+  }
+  private void afterDelete() {
+    /* logic here */
+  }
+  private void afterUndelete() {
+    /* logic here */
+  }
+}
+```
+
+### 14. SOQL Standards
+
+**Verify:** Build — SOQL patterns only exist in source code.
+
+```apex
+List<Account> accounts = [
+    SELECT Id, Name, Risk_Score__c
+    FROM Account
+    WHERE Status__c = :targetStatus
+    AND CreatedDate >= :startDate
+    ORDER BY Name ASC
+    LIMIT 200
+];
+```
+
+- Keywords **UPPERCASE**: `SELECT`, `FROM`, `WHERE`, `AND`, `ORDER BY`, `LIMIT`
+- `Id` always first in field list
+- One clause per line
+- **Bind variables** over string concatenation (prevents SOQL injection)
+- No SOQL in loops
+- Use **`WITH USER_MODE`** or **`WITH SECURITY_ENFORCED`** for CRUD/FLS enforcement
+
+### 15. Security
+
+**Verify:** Design — security model (sharing, FLS enforcement, user mode) must be specified for Apex components.
+
+- **Always declare sharing explicitly** — omitting it is a security anti-pattern
+- **Prefer User Mode operations**: `WITH USER_MODE` in SOQL, `insert as user`, `Database.insert(record, AccessLevel.USER_MODE)`
+- Fallback: `WITH SECURITY_ENFORCED` in SOQL (throws `QueryException` if user lacks access)
+- Fallback: `Security.stripInaccessible()` for graceful degradation on DML
+- **`@AuraEnabled` classes must use `with sharing`**
+- `without sharing` requires a comment explaining why system-level access is needed
+
+### 16. Apex Test Standards
+
+**Verify:** Build — test structure and coverage only exist in source code.
+
+```apex
+@IsTest(seeAllData=false)
+private class Test_AccountTriggerHandler {
+  @TestSetup
+  static void setupData() {
+    // Create all test data here — never rely on org data
+  }
+
+  @IsTest
+  static void test_Success_Single() {
+    Test.startTest();
+    // invoke the code under test
+    Test.stopTest();
+
+    System.assertEquals(expected, actual, 'Descriptive assertion message');
+  }
+}
+```
+
+- `@IsTest` annotation (not the deprecated `testmethod` keyword)
+- `private` access modifier on test classes
+- `seeAllData=false` explicit (even though it's the default)
+- `@TestSetup` for shared test data
+- `Test.startTest()` / `Test.stopTest()` wrapping async and governor-sensitive operations
+- **Assertion messages required** on every `System.assertEquals` / `System.assert`
+- Test categories: **positive**, **negative**, **bulk** (200+ records), **permission** (`System.runAs()`)
+- **90% coverage per class** (75% is the Salesforce deployment floor, not our target)
+- `HttpCalloutMock` inner classes for callout testing — never use `Test.isRunningTest()` branching
+
+### 17. Flow Testing Standards
+
+**Verify:** Design — test strategy (which flows get native tests, coverage targets) specified in design doc. Build — actual test metadata.
+
+- **lightning-flow-scanner** must pass with zero errors before commit (all flow types). Already installed as an SF CLI plugin (`sf flow scan --directory force-app/main/default/flows`).
+- **Native Flow Tests** (record-triggered flows):
+  - **Required** for any record-triggered flow built or modified by Claude — test created in the same session as the flow
+  - **Recommended** for manually-built record-triggered flows (Claude can assist)
+  - Not applicable to screen, scheduled/batch, or subflows (native tests don't support them)
+  - Tests are deployable SFDX metadata (`FlowTest` type, `flowtests/` directory)
+  - Each test should cover: happy path, key decision branches, boundary conditions
+- **Flow descriptions** should document test scenarios (what was tested, expected behavior)
+
+### 18. Anti-Patterns
+
+**Verify:** Build — anti-patterns can only be detected in actual code/metadata.
+
+Do not:
+
+- Use `global` access modifier unless required by managed package interface or `@InvocableMethod`
+- Hard-code IDs (applies to both Apex and Flows)
+- Put SOQL or DML inside loops
+- Leave `System.debug` statements in committed code
+- Use the deprecated `testmethod` keyword
+- Use `@isTest(SeeAllData=true)`
+- Use `Test.isRunningTest()` for conditional branching — use mocks instead
+- Write dummy code (`i++`) solely to inflate coverage metrics
+- Omit the sharing keyword on any class
+
+---
+
+## Sources
+
+| Source                                                                                                                                                    | Topic                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| [Apex Developer Guide — Naming Conventions](https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/apex_classes_naming_conventions.htm) | Official Apex naming                    |
+| [The 15 Apex Commandments](https://developer.salesforce.com/blogs/developer-relations/2015/01/apex-best-practices-15-apex-commandments)                   | Governor limits, testing, anti-patterns |
+| [Ultimate Guide to Flow Best Practices](https://admin.salesforce.com/blog/2021/the-ultimate-guide-to-flow-best-practices-and-standards)                   | Flow naming, descriptions, fault paths  |
+| [Planning for Flow Success (2025)](https://admin.salesforce.com/blog/2025/planning-for-flow-success-building-automation-that-scales)                      | Flow architecture, micro-automation     |
+| [Secure Apex Programming — Trailhead](https://trailhead.salesforce.com/content/learn/modules/secure-serverside-development)                               | CRUD/FLS, sharing model                 |
+| [Success Cloud Coding Conventions — Trailhead](https://trailhead.salesforce.com/content/learn/modules/success-cloud-coding-conventions)                   | Object/field naming                     |
+| [Salesforce Well-Architected Framework](https://architect.salesforce.com/well-architected/overview)                                                       | Platform architecture principles        |

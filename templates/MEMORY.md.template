@@ -1,0 +1,50 @@
+# {{PROJECT_NAME}} — Shared Project Memory
+
+> **This file is repo-tracked and shared by the whole team.** It is the canonical source for project state, WI status, feedback patterns, and team context. When writing `project`, `feedback`, or `reference` type memories, write to this directory (`.claude/memory/`) and update this index. Personal memories (timezone, machine-specific preferences) go in your local `~/.claude/projects/.../memory/` instead.
+
+## Project Summary
+
+<!-- One paragraph: what this org does, what platform it runs on, key business context -->
+
+## Architecture Rules (Hard Constraints)
+
+<!-- Link to feedback memories as they accumulate -->
+<!-- Example: - [Configuration First, Best Solution Wins](.claude/memory/feedback_configuration_first.md) — Hybrid solutions encouraged -->
+
+## Active Work Items
+
+> Execution-level tracking for in-flight DevOps Center WIs. Auto-cleaned by `/wi-sync` when promoted/closed.
+> Full backlog: `docs/backlog/backlog.yaml`
+
+| WI | Name | Backlog | Assigned | Status | Notes |
+|----|------|---------|----------|--------|-------|
+
+## Backlog
+
+Upstream backlog: `docs/backlog/backlog.yaml`. Manage with `/backlog`. Rendered: `docs/backlog/README.md`.
+
+## Git Conventions
+
+<!-- Commit prefixes, branch patterns, hook behaviors -->
+<!-- Example: - **`[docs-only]` commit prefix** — description-only commits skip Slack notifications -->
+
+## Tooling Decisions
+
+<!-- Feedback memories about process and tooling choices -->
+<!-- Example: - [Hybrid Script + Claude Approach](.claude/memory/feedback_scripts_over_claude.md) — Scripts for deterministic, Claude for semantic -->
+
+## Documentation Progress
+
+<!-- Tracking for /doc-flows, /doc-components output -->
+
+## External Tools & References
+
+<!-- Links to external systems, vendor docs, reference memories -->
+
+## Team Members
+
+<!-- User memory links for each team member -->
+
+## Error Tracking
+
+<!-- Recurring errors classified as deterministic vs infrastructure -->

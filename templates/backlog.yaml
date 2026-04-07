@@ -1,0 +1,15 @@
+# Backlog — managed by /backlog skill
+# Schema: id, title, description, category, status, priority, effort, complexity,
+#   tags, source, submitted_by, assigned_to, target_date, design_doc, devops_wis,
+#   blocked_by, related, created, updated, notes, cbc_score
+#
+# Status values: Captured, Groomed, Prioritized, In Progress, Deferred, Done, Archived
+# Effort: XS, S, M, L, XL
+# Complexity: Low, Med, High
+# Priority: P1 (critical), P2 (high), P3 (medium), P4 (low)
+#
+# Run /backlog add to create items interactively
+# Run /backlog render to generate docs/backlog/README.md
+
+items: []
+archived: []

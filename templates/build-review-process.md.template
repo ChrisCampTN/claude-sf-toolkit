@@ -1,0 +1,306 @@
+<!-- Scaffolded by claude-sf-toolkit. Customize for your project. -->
+
+# Build Review Process
+
+Adapted from a phased-build review framework, tailored for the Claude-assisted Salesforce team build model (Claude builds, humans refine and verify) and Salesforce declarative-first architecture.
+
+**Scope:** This document defines how review is structured for every build session — agent-driven, human-focused, and config-only. It is not a waterfall gate at the end. Review is woven into each build mode using the right lens at the right moment.
+
+**Relationship to other docs:**
+
+- `docs/coding-standards.md` — defines _what_ standards to check against
+- `/skill-preflight` — validates pre-conditions before a build starts
+- `/platform-review` — quarterly deep review across 7 personas
+- This document — defines _when_ and _how_ review happens during each build session
+
+---
+
+## 1. Review Dimensions (Salesforce-Specific)
+
+Five dimensions, chosen for what actually breaks Salesforce builds.
+
+### 1. Spec Compliance
+
+**What it catches:** Implementation that doesn't match the design doc or backlog item spec — wrong field API names, missing flow elements, incorrect object relationships, stale references to retired components.
+
+**Primary signal:** Discrepancy between the design doc (or backlog item notes) and what was built.
+
+**When it matters most:** Start of build (does the spec trace to clear deliverables?) and end of build (did anything drift?).
+
+### 2. FLS & Sharing
+
+**What it catches:** Permission set gaps, missing FLS grants, overly permissive object access, sharing rule holes, Community user access to internal data.
+
+**Primary signal:** A user can see or edit data they shouldn't, or can't access data they need.
+
+**When it matters most:** Any build that adds new objects, fields, or permission sets. Any build touching Community-facing components.
+
+### 3. Fault Handling
+
+**What it catches:** Missing fault connectors on DML/action elements, silent failures in integrations, flows that fail without logging, screen flows that show blank screens on error.
+
+**Primary signal:** A flow faults and the user/admin gets no feedback and no log entry.
+
+**When it matters most:** Any build adding DML, callouts, or screen flows. Check against `coding-standards.md` Section 3 (fault handling standards) and the migration phase plan.
+
+### 4. Test Coverage
+
+**What it catches:** Missing FlowTests for agent-built record-triggered flows, Apex tests below 90% coverage, flow scanner violations, tests that pass but don't assert the failure they claim to cover.
+
+**Primary signal:** A test passes but the bug it's supposed to catch would still ship.
+
+**When it matters most:** Every agent-driven build (tests are generated alongside code). Human-focused Flow builds get flow scanner + manual verification. Config-only work gets org-query validation.
+
+**Standard:** Verify assertions, not just pass/fail. Ask Claude to show the specific assertion, not just confirm the test passes.
+
+### 5. Functionality
+
+**What it catches:** Dead-end user flows, undefined state transitions, missing screens in multi-step flows, edge cases in conditional paths, flows that work in isolation but break when called as subflows.
+
+**Primary signal:** A user tries to do something the spec allows and hits a wall.
+
+**When it matters most:** Screen flows, portal-facing components, multi-step processes, any build that orchestrates multiple subflows or LWC components.
+
+---
+
+## 2. Review Modes Mapped to Build Modes
+
+Each build mode gets a specific review approach. The review mode determines _how_ Claude and the team member verify the work.
+
+### Agent-Driven Builds (Apex, LWC, Objects, Fields, PermSets, FlowTests)
+
+Claude generates code/metadata from specs. Review is code-focused and test-focused.
+
+| Review Activity       | How                                                                                                        | Who                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **Code review**       | Claude reads its own output and reports against dimensions. Team member reviews the report.                | Claude generates, team reviews |
+| **Test verification** | Claude runs tests and shows assertions (not just pass/fail). Team member confirms assertions match intent. | Claude runs, team verifies     |
+| **Flow scanner**      | Run `sf flow scan` on any generated flow XML. Zero violations required.                                    | Claude runs                    |
+| **FLS verification**  | Claude checks permission set XML against field list in spec. Cross-reference with `sf sobject describe`.   | Claude checks                  |
+
+**Key instruction for Claude:** When reporting test results, show the specific assertion for each test — not just "all tests pass." For security-sensitive tests (sharing, FLS, Community access), show the test setup that replicates real conditions.
+
+### Human-Focused Builds (Screen Flows, Complex Flows in Flow Builder)
+
+Human builds manually in Flow Builder. Claude validates each step via org queries.
+
+| Review Activity         | How                                                                                                     | Who                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| **Flow scanner**        | Run `sf flow scan` after each significant save. Report violations immediately.                          | Claude runs on request        |
+| **Org validation**      | `sf sobject describe`, SOQL queries, `sf data query` to verify configuration matches spec.              | Claude queries, team confirms |
+| **Fault path check**    | Claude queries the flow metadata to verify fault connectors exist on all DML/action elements.           | Claude checks                 |
+| **Functionality trace** | Walk through each user path verbally. Team member describes what happens; Claude verifies against spec. | Collaborative                 |
+
+### Config-Only Builds (Reports, Dashboards, Experience Cloud, Approval Processes, Data Cloud)
+
+Human configures in Salesforce UI. Claude assists on design and validates each step.
+
+| Review Activity               | How                                                                                          | Who              |
+| ----------------------------- | -------------------------------------------------------------------------------------------- | ---------------- |
+| **Step-by-step verification** | After each manual step, Claude validates via org queries (`describe`, SOQL, test execution). | Claude validates |
+| **Drift detection**           | Compare org state against spec to catch missed steps or unintended side effects.             | Claude checks    |
+| **Spec compliance**           | Verify each configured component against the design doc.                                     | Collaborative    |
+| **Documentation**             | Generate docs for manual config that isn't source-tracked (Data Cloud, CRM Analytics).       | Claude generates |
+
+---
+
+## 3. The Build Report
+
+Every build session ends with a structured build report. The format is fixed regardless of build mode. This report serves three purposes:
+
+1. **Review gate** — team member reviews before approving the next step
+2. **Session handoff** — if the session ends incomplete, the report is the context for the next session
+3. **Feedback capture** — team members annotate the report with corrections or observations
+
+### Format
+
+```
+BUILD REPORT — WI-000XXX
+Date: YYYY-MM-DD
+Build mode: [agent-driven / human-focused / config-only]
+Builder: [team member name]
+
+TESTS:
+  FlowTests: [pass / N failures — list them]
+  Apex tests: [pass / N failures — list them]
+  Flow scanner: [clean / N violations — list them]
+
+SPEC COMPLIANCE:
+  [checkmark] [item] — [brief confirmation]
+  [warning] [item] — [what was found, what was done]
+  [fail] [item] — [what is wrong — DO NOT FIX, report only]
+
+FLS & SHARING:
+  [checkmark] [item] — [brief confirmation]
+  [warning/fail as above]
+
+FAULT HANDLING:
+  [checkmark] [item] — [brief confirmation]
+  [warning/fail as above]
+
+TEST COVERAGE:
+  [checkmark] [item] — [assertion shown]
+  [warning/fail as above]
+
+FUNCTIONALITY:
+  [checkmark] [item] — [user path confirmed]
+  [warning/fail as above]
+
+GATE STATUS: [PASS / FAIL]
+[If FAIL: list every fail item that must be resolved]
+[If incomplete session: list what remains for next session]
+
+TEAM NOTES:
+[Space for team member to add observations, corrections, or feedback]
+```
+
+### Report Rules
+
+1. **Claude never fixes fail items during the report.** Report only. Fixes happen in a dedicated fix pass after the team member reviews the full picture. This prevents cascading changes that introduce new issues.
+
+2. **Team member must confirm GATE STATUS before proceeding.** A gate that can be bypassed is not a gate. Claude does not auto-proceed to the next step.
+
+3. **Warnings touching FLS & Sharing are treated as failures.** Security findings are never advisory.
+
+4. **Save incomplete reports to main.** If a session ends before the build is complete, commit the partial build report as `docs/build-notes/WI-NNNNNN.md` on main (this is repo-only docs, not `force-app/` metadata). The next session reads this file first to resume context. **Never commit non-metadata files to WI branches** — DevOps Center tracks every file that appears in a WI branch commit, and non-deployable files pollute the changeset.
+
+---
+
+## 4. Fix Pass Discipline
+
+### One Fix Pass Maximum
+
+After the build report, the team member reviews and approves a fix pass for all reported failures. Claude addresses them in a single dedicated pass and produces a **fix report** (same format as the build report, covering only the changed items).
+
+**If the fix report reveals new issues that need another fix pass, stop.** This signals a deeper implementation problem. The team member and Claude should assess whether the component needs partial rebuilding rather than iterating further.
+
+**Why this matters:** Infinite iteration loops are the most common source of wasted time in Claude-assisted builds. One fix pass forces the first build to be more careful, and forces the fix pass to be comprehensive rather than incremental.
+
+### Fix Pass Prompt Review
+
+Before issuing any fix pass instructions, apply the five-question check (Section 5). Fix instructions are written under time pressure and are the most common source of mid-build rework.
+
+---
+
+## 5. The Five-Question Check
+
+Apply before issuing any mid-build correction, fix pass instruction, or spec modification to Claude. Takes two minutes and prevents the most common rework.
+
+```
+1. Is every instruction unambiguous? Could Claude interpret it two valid ways?
+2. For any callout or async flow — are fault paths, retry, and user feedback specified?
+3. Could this change affect components outside the stated WI scope?
+4. Does this contradict anything already built and committed on the WI branch?
+5. Should a test (FlowTest, Apex test, or flow scanner rule) be added or modified?
+```
+
+**When to apply:**
+
+| Trigger                                 | Example                                             |
+| --------------------------------------- | --------------------------------------------------- |
+| Mid-build spec change                   | "Actually, add a validation rule on that field too" |
+| Fix pass instructions                   | "Fix the three failures from the build report"      |
+| Manual correction during build          | "No, that field should be a picklist, not text"     |
+| New requirement surfacing at build time | "We also need to handle the case where..."          |
+
+**When NOT to apply:** Routine build instructions that follow an already-reviewed spec. The spec was reviewed at `/backlog graduate` time — don't re-review every instruction derived from it.
+
+---
+
+## 6. Quality Gate at Graduation
+
+`/backlog graduate` creates DevOps Center work items from backlog items. Before graduation, the following must be verified:
+
+### Architecture Checklist
+
+- [ ] **Build mode assigned:** agent-driven, human-focused, config-only, or multi-mode
+- [ ] **Object model defined:** which objects/fields, new or existing, relationships
+- [ ] **Integration pattern:** external systems, API direction, auth model (if applicable)
+- [ ] **Sharing/security model:** who needs access, which permission sets
+- [ ] **Dependencies:** what must exist first, sequencing with other WIs
+- [ ] **Scope boundaries:** what's in, what's explicitly out
+- [ ] **For multi-mode items:** integration checkpoints defined (see Section 7)
+
+### Spec Traceability
+
+Every numbered deliverable in the backlog item must trace to a clear implementation target:
+
+- Field → object + API name + type
+- Flow → trigger event + entry criteria + expected behavior
+- Permission → permission set + FLS grants
+- Test → what is being asserted and against what conditions
+
+Items that cannot be traced to a specific implementation target are gaps. Resolve before graduating.
+
+---
+
+## 7. Multi-Mode Integration Checkpoints
+
+Features that span multiple build modes need explicit integration verification points. Without them, each piece works in isolation but the assembled feature has gaps.
+
+### Pattern
+
+For any WI with components across 2+ build modes:
+
+1. **Define the integration boundary** — where does agent-built code connect to human-built configuration?
+
+2. **Build the agent-driven layer first** — it produces testable, deployable artifacts. Verify with a build report.
+
+3. **Build the human-configured layer** — with the agent layer deployed, the human configures on top of it. Claude validates each connection point via org queries.
+
+4. **Integration verification** — after both layers are deployed, verify the assembled feature end-to-end:
+   - Screen flow renders the LWC component correctly
+   - Data flows from LWC → Apex → Flow → target object
+   - Error states in the agent layer surface correctly in the human layer
+   - Permission sets grant access to all components in the chain
+
+5. **Produce a combined build report** that covers both layers and the integration points.
+
+### Sequencing Rule
+
+Agent-driven components deploy first. Human-configured components build on top. Never build the config layer against a spec alone — build it against the deployed agent layer so integration issues surface immediately.
+
+---
+
+## 8. Team Feedback Capture
+
+The build report's TEAM NOTES section is the mechanism for team members to flag issues that don't fit neatly into the five dimensions:
+
+- "Claude assumed X and it was wrong" → becomes a feedback memory if it's a pattern
+- "This step was confusing" → becomes a skill improvement or spec template change
+- "The review missed Y" → becomes an addition to this document's dimension checklist
+
+### Feedback Loop
+
+1. Team member adds notes to the build report during review
+2. At `/wrap-up` or `/lookback`, notes are reviewed for patterns
+3. Patterns graduate to:
+   - **Feedback memory** (if it's a Claude behavior to correct or reinforce)
+   - **Coding standards update** (if it's a new standard)
+   - **This document update** (if it's a review process gap)
+   - **Skill improvement** (if it's a tooling gap)
+
+---
+
+## 9. Applying This Process
+
+### Per-Session Checklist
+
+1. **Start:** `/skill-preflight` validates pre-conditions
+2. **Build:** Follow the review mode for this WI's build mode (Section 2)
+3. **Report:** Produce the build report (Section 3)
+4. **Review:** Team member reviews. GATE STATUS must be confirmed.
+5. **Fix (if needed):** One fix pass maximum. Apply five-question check to fix instructions.
+6. **Handoff:** If incomplete, save build notes to main. If complete, proceed to `/devops-commit`.
+
+### Relationship to Existing Skills
+
+| Skill              | Relationship to Review Process                                                   |
+| ------------------ | -------------------------------------------------------------------------------- |
+| `/skill-preflight` | Runs before the build. Validates pre-conditions (git, org, metadata).            |
+| `/deploy-changed`  | Runs after GATE STATUS = PASS. Deploys the reviewed artifacts.                   |
+| `/devops-commit`   | Runs after successful deploy. Associates the commit with the WI.                 |
+| `/test-flows`      | Generates FlowTests during agent-driven builds. Part of test coverage dimension. |
+| `/platform-review` | Quarterly deep review. Catches drift that per-session review misses.             |
+| `/wrap-up`         | End-of-session. Reviews TEAM NOTES for feedback patterns.                        |
+| `/lookback`        | Periodic retrospective. Graduates feedback patterns into shared memory.          |
