@@ -418,8 +418,13 @@ Report any validation issues. Offer to fix automatically where possible (e.g., t
 1. **Review generated tests** — check field values and assertions for accuracy
 2. **Populate lookup fields** — fill in real record IDs for any tests flagged with lookup dependencies
 3. **Deploy to dev sandbox:** `/deploy-changed`
-4. **Run tests in org:** Setup > Flows > {FlowName} > View Tests > Run All
-   (No CLI command for flow test execution — UI only)
+4. **Run tests from CLI:**
+   ```bash
+   sf flow run test --name "{FlowTestName}" --target-org {target-org}
+   sf flow get test --name "{FlowTestName}" --target-org {target-org}
+   ```
+   Or run all Apex + Flow tests together: `sf logic run test --target-org {target-org}`
+   UI alternative: Setup > Flows > {FlowName} > View Tests > Run All
 5. **Fix failures and iterate** — re-run `/test-flows {FlowName}` to regenerate after flow changes
 6. **Commit:** `/devops-commit WI-{number}`
 ```

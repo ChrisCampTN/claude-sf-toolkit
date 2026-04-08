@@ -374,7 +374,42 @@ Files committed: {n}
 Branch {WI-NNNNNN} pushed to origin.
 Deployed to {target-org}: {Yes / No / Partial}
 Current branch: {original branch}
+```
 
+### 8A — Offer MCP-Driven Promotion (optional)
+
+After a successful commit + push + deploy, offer to start the promotion pipeline via MCP instead of requiring the user to open the DevOps Center UI:
+
+```text
+Ready to promote? Options:
+1. **Check for conflicts first:** detect merge conflicts before promoting
+2. **Promote now:** create a pull request and promote through the pipeline
+3. **Skip:** promote manually in DevOps Center later
+```
+
+If the user chooses option 1:
+
+```
+detect_devops_center_merge_conflict(workItemName: "{WI-NNNNNN}")
+```
+
+If conflicts are detected, report them and ask whether to attempt resolution or abort. If clean:
+
+```
+promote_devops_center_work_item(workItemName: "{WI-NNNNNN}")
+```
+
+If the user chooses option 2 (promote directly):
+
+```
+promote_devops_center_work_item(workItemName: "{WI-NNNNNN}")
+```
+
+**Important:** Promotion targets Staging, not Production. The Staging → Production promotion is always human-initiated in DevOps Center (bundled promotions).
+
+If the user chooses option 3, show manual next steps:
+
+```text
 Next steps:
 1. Open DevOps Center in {context.orgs.productionAlias}
 2. Work item {WI-NNNNNN} should show the new commit(s)

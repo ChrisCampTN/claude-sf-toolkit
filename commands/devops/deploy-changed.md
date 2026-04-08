@@ -375,12 +375,26 @@ After a successful (non-dry-run) deploy:
    | Permission sets | `sf data query --query "SELECT Id FROM PermissionSet WHERE Name = '{PermSetName}'" --target-org {target-org}`                                       |
    | Other types     | Use the most appropriate describe/query for that type                                                                                               |
 
-3. **Evidence gate:** Only report success if verification confirms the deploy landed. If verification fails or contradicts the deploy command output:
+3. **Run FlowTests (if flow files were deployed):** If the deploy set included `.flow-meta.xml` files and corresponding `.flowtest-meta.xml` files exist in `{context.metadataPath}/flowtests/`, run them:
+
+   ```bash
+   sf flow run test --name "{FlowTestName}" --target-org {target-org}
+   ```
+
+   Or run all flow tests in a single unified command:
+
+   ```bash
+   sf logic run test --target-org {target-org}
+   ```
+
+   Report pass/fail counts. FlowTest failures are **warnings** (don't block deploy success), but flag them prominently so the user can investigate.
+
+4. **Evidence gate:** Only report success if verification confirms the deploy landed. If verification fails or contradicts the deploy command output:
    - Report the discrepancy with evidence (command output)
    - Do NOT claim success
    - Suggest: re-deploy with `--metadata` flag instead of `--source-dir`, or deploy individual files
 
-4. **Summarize results** (only after verification passes):
+5. **Summarize results** (only after verification passes):
 
    ```text
    ## /deploy-changed Complete

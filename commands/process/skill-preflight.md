@@ -253,6 +253,40 @@ Check that articles in `faq/` subdirectories have `record-type: FAQ` and article
 
 ---
 
+## Suite: `limits` — Governor Limit Checks
+
+Use this suite as a preflight for operations that affect high-volume objects (notably Balance Sheet Entry at 1.1M+ records). Not mapped to any skill by default — invoke explicitly via `/skill-preflight limits` or add to skill mappings as needed.
+
+### L1 — Org Limit Snapshot
+
+Query the target org's governor limit consumption:
+
+```bash
+sf org list limits --target-org {target-org} --json
+```
+
+Flag any limit at **>80% consumed** as WARN, **>95%** as FAIL. Key limits to watch:
+
+| Limit | Why It Matters |
+|-------|----------------|
+| DailyApiRequests | Bulk operations + integrations can exhaust API calls |
+| DailyBulkV2QueryJobs | Batch data operations |
+| DataStorageMB | New records on high-volume objects |
+| FileStorageMB | Attachments, documents |
+| SingleEmail / MassEmail | Notification flows |
+
+### L2 — Record Count Check
+
+Get approximate record counts for objects in the operation scope:
+
+```bash
+sf org list sobject record-counts --sobject Balance_Sheet_Entry__c --sobject Billing_Transaction__c --sobject Account --target-org {target-org} --json
+```
+
+Report counts and flag any object over 500K records with a governor limit advisory.
+
+---
+
 ## Output Format
 
 Present results grouped by suite, using clear pass/warn/fail indicators:
