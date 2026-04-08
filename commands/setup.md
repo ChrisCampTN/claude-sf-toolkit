@@ -188,10 +188,16 @@ Check for required Claude Code plugins:
 claude plugin list 2>/dev/null
 ```
 
-Required: `superpowers`, `commit-commands`, `code-review`
+Required: `superpowers`, `commit-commands`
 Recommended: `context7`, `skill-creator`
 
-Report which are installed and which are missing with install commands.
+For any missing required plugins, install them:
+
+```bash
+claude plugin install {plugin} --scope project
+```
+
+Report which are installed, which were auto-installed, and which recommended plugins are missing with install commands.
 
 ### Step 11: Summary Report
 
