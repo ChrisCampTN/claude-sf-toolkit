@@ -19,15 +19,14 @@ sf plugins install sfdmu                    # Data backup/restore across sandbox
 ### Required Claude Code Plugins
 
 ```bash
-claude plugin add superpowers
-claude plugin add commit-commands
-claude plugin add code-review
+claude plugin install superpowers --scope project
+claude plugin install commit-commands --scope project
 ```
 
 ## Installation
 
 ```bash
-claude plugin add https://github.com/ChrisCampTN/claude-sf-toolkit
+claude plugin install https://github.com/ChrisCampTN/claude-sf-toolkit --scope project
 ```
 
 ## Quick Start
