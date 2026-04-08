@@ -145,7 +145,100 @@ If errors are found, offer to auto-fix and re-run validation before continuing.
 
 ---
 
-## Step 4 — Build Deploy Command
+## Step 4 — Code Quality Scanning
+
+Scan deployable code files for performance risks, security issues, and best-practice violations. This step runs only when the deploy set contains scannable file types. If no scannable files exist, skip this step entirely with no output.
+
+### Classify files in deploy set
+
+Group deployable files by type:
+
+| Extension | Type | Scan tool |
+|---|---|---|
+| `.cls` | Apex | ApexGuru + Code Analyzer |
+| `.flow-meta.xml` | Flow | lightning-flow-scanner |
+| `.js`, `.html` | LWC/Aura | Code Analyzer |
+| `.page`, `.component` | Visualforce | Code Analyzer |
+
+If none of these extensions are in the deploy set, skip to Step 5.
+
+### Apex scanning (if `.cls` files present)
+
+**ApexGuru (prominent tier):** Run `scan_apex_class_for_antipatterns` on each Apex class in the deploy set. Use the resolved `--target-org` as the `usernameOrAlias` parameter so severity reflects actual runtime metrics when ApexGuru is enabled on the org. Collect findings into a "Performance Risks" list with severity, class name, finding description, and recommendation.
+
+```
+For each .cls file in deploy set:
+  scan_apex_class_for_antipatterns(
+    className: "{class name without extension}",
+    apexFilePath: "{absolute path to .cls file}",
+    directory: "{project root}",
+    usernameOrAlias: "{target-org alias}"
+  )
+```
+
+**Code Analyzer (informational tier):** Run `run_code_analyzer` with selector `Apex:Recommended` on all Apex files in the deploy set (batch up to 10 files per call). If more than 10 Apex files, split into multiple calls. After completion, use `query_code_analyzer_results` to extract findings. Collect into a "Code Analysis" list grouped by severity.
+
+```
+run_code_analyzer(
+  target: ["{absolute path 1}", "{absolute path 2}", ...],
+  selector: "Apex:Recommended"
+)
+```
+
+### Flow scanning (if `.flow-meta.xml` files present)
+
+**lightning-flow-scanner (prominent tier):** Run `sf flow scan` targeting the changed flow files. If the `--files` flag is supported, pass each changed flow path directly. Otherwise, run `sf flow scan --directory {metadataPath}/flows` and filter the output to only include flows in the deploy set.
+
+```bash
+sf flow scan --files "{path1},{path2},..."
+```
+
+Or fallback:
+
+```bash
+sf flow scan --directory {context.metadataPath}/flows
+# Then filter results to only flows in the deploy set
+```
+
+Collect findings into a "Flow Issues" list with rule name, flow name, and description.
+
+### LWC/Aura scanning (if `.js` or `.html` files present)
+
+**Code Analyzer (informational tier):** Run `run_code_analyzer` with selector `(JavaScript,HTML):Recommended` on all JS/HTML files in the deploy set.
+
+```
+run_code_analyzer(
+  target: ["{absolute path 1}", "{absolute path 2}", ...],
+  selector: "(JavaScript,HTML):Recommended"
+)
+```
+
+### Visualforce scanning (if `.page` or `.component` files present)
+
+**Code Analyzer (informational tier):** Run `run_code_analyzer` with selector `Visualforce:Security` on all VF files in the deploy set.
+
+```
+run_code_analyzer(
+  target: ["{absolute path 1}", "{absolute path 2}", ...],
+  selector: "Visualforce:Security"
+)
+```
+
+### Parallelism
+
+ApexGuru calls run sequentially (one MCP call per class). Code Analyzer and flow scan can run in parallel since they target different files and use independent tools. Structure execution as:
+
+1. Start ApexGuru scanning (sequential per class)
+2. In parallel: start Code Analyzer batch + flow scan
+3. Collect all results before proceeding to Step 5
+
+### No findings
+
+If all scans complete with zero findings, report briefly: "Code quality scan: no issues found" and proceed to Step 5.
+
+---
+
+## Step 5 — Build Deploy Command
 
 Construct the `sf project deploy start` command with targeted `--source-dir` flags.
 
@@ -170,7 +263,7 @@ sf project deploy start --target-org {target-org} {--dry-run if applicable} --so
 
 ---
 
-## Step 5 — Preview and Confirm
+## Step 6 — Preview and Confirm
 
 Show the user the full deployment plan before executing:
 
@@ -182,7 +275,35 @@ Mode: {Deploy / Dry-Run (validation only)}
 Changed files: {total count}
 Deployable files: {filtered count}
 Filtered out: {n} non-metadata files
+```
 
+If Step 4 produced findings, include these sections in the preview:
+
+### Performance Risks (ApexGuru)
+
+Show only if ApexGuru found issues. Table format:
+
+| Severity | Class | Finding | Recommendation |
+|---|---|---|---|
+| {severity} | {className} | {finding description} | {recommendation} |
+
+### Flow Issues
+
+Show only if flow scanner found issues. Table format:
+
+| Rule | Flow | Description |
+|---|---|---|
+| {ruleName} | {flowName} | {description} |
+
+### Code Analysis (informational)
+
+Show only if Code Analyzer found issues across any file type. Table format:
+
+| Severity | File | Rule | Message |
+|---|---|---|---|
+| {severity} | {fileName} | {ruleName} | {message} |
+
+```
 ### Files to Deploy
 
 | # | Type | Path |
@@ -205,7 +326,7 @@ For `--dry-run` mode, note: "This is a validation-only run. No changes will be a
 
 ---
 
-## Step 6 — Execute Deploy
+## Step 7 — Execute Deploy
 
 Run the deploy command:
 
@@ -233,7 +354,7 @@ Report the component success counts and any warnings.
 
 ---
 
-## Step 7 — Post-Deploy Verification (mandatory)
+## Step 8 — Post-Deploy Verification (mandatory)
 
 Apply `superpowers:verification-before-completion` discipline: **no success claims without fresh evidence.** Deploy commands can report success without actually deploying metadata. Never trust exit codes alone.
 
