@@ -130,7 +130,9 @@ function archiveFile(srcPath, archiveDir, prefix, dryRun) {
 
 function migrateCategory(projectRoot, relDir, fileList, archiveSubdir, prefix, dryRun) {
   const sourceDir = path.join(projectRoot, relDir);
-  const archiveDir = path.join(projectRoot, relDir, archiveSubdir);
+  // Archive to project-root .migration-archive/ to avoid Claude Code skill discovery
+  // (files inside .claude/commands/_archived/ would be found as slash commands)
+  const archiveDir = path.join(projectRoot, ".migration-archive");
   const results = { archived: [], skipped: [], notFound: [] };
 
   for (const fileName of fileList) {
@@ -320,8 +322,8 @@ function printHelp() {
 Usage: node migrate-from-local.js [options]
 
 Migrates a Salesforce DX project from local skills, agents, and scripts
-to the claude-sf-toolkit plugin. Archives superseded files to _archived/
-directories with a date prefix, then removes the originals.
+to the claude-sf-toolkit plugin. Archives superseded files to .migration-archive/
+at the project root with a date prefix, then removes the originals.
 
 Options:
   --dry-run   Show what would be done without modifying any files
