@@ -44,5 +44,26 @@ check "docs/platform-brief.md exists" "[ -f docs/platform-brief.md ]" "Run: /set
 check "CLAUDE.md exists" "[ -f CLAUDE.md ]" "Run: /setup to scaffold"
 check "README.md exists" "[ -f README.md ]" "Run: /setup to scaffold"
 
+# Claude Code plugins
+echo ""
+echo "Claude Code Plugins:"
+PLUGIN_LIST=$(claude plugin list 2>/dev/null)
+for plugin in superpowers commit-commands; do
+  check "$plugin installed" "echo \"\$PLUGIN_LIST\" | grep -q \"$plugin\"" "Run: claude plugin install $plugin --scope project"
+done
+echo ""
+echo "Recommended (optional):"
+for plugin in context7 skill-creator; do
+  check "$plugin installed" "echo \"\$PLUGIN_LIST\" | grep -q \"$plugin\"" "Run: claude plugin install $plugin --scope project"
+done
+
+# SF CLI plugins
+echo ""
+echo "SF CLI Plugins:"
+SF_PLUGINS=$(sf plugins 2>/dev/null)
+for plugin in lightning-flow-scanner sfdx-git-delta sfdmu; do
+  check "$plugin installed" "echo \"\$SF_PLUGINS\" | grep -q \"$plugin\"" "Run: sf plugins install $plugin"
+done
+
 echo ""
 echo "Results: $PASS passed, $WARN warnings, $FAIL failed"
