@@ -131,9 +131,8 @@ Setting up a new Salesforce DX project with the SF Toolkit:
    sf plugins install sfdmu
 
 6. Install required Claude Code plugins:
-   claude plugin add superpowers
-   claude plugin add commit-commands
-   claude plugin add code-review
+   claude plugin install superpowers --scope project
+   claude plugin install commit-commands --scope project
 
 7. Run /setup — this will:
    - Scaffold project directories
