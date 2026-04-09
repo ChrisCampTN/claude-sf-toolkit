@@ -26,20 +26,16 @@ claude plugin install commit-commands --scope project
 ## Installation
 
 ```bash
-# Add the plugin marketplace
-claude plugin marketplace add ChrisCampTN/claude-sf-toolkit
-
-# Install the plugin
-claude plugin install claude-sf-toolkit --scope project
+claude plugin marketplace add ChrisCampTN/claude-sf-toolkit && claude plugin install claude-sf-toolkit --scope project
 ```
 
 ### Updating
 
-To update to the latest version, re-run the install command:
-
 ```bash
-claude plugin install claude-sf-toolkit --scope project
+claude plugin marketplace add ChrisCampTN/claude-sf-toolkit && claude plugin install claude-sf-toolkit --scope project
 ```
+
+The marketplace add refreshes the source, and the install picks up the latest version. Both commands must run in the same session.
 
 On your next session, the hook will print a notice if the version changed.
 
