@@ -1,0 +1,17 @@
+{
+  "description": "SF Toolkit — session initialization, dependency checks, and SF CLI plugin detection",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -175,6 +175,13 @@ MANUAL CONFIG (config/sf-toolkit.json):
   team                  Email → display name mapping for all team members
   searchKeywords        Keywords for /release-review and /tooling-review
   backlog.backend       "yaml" (file-based) or "salesforce" (custom object)
+  cache.ttlHours        Resolver cache lifetime in hours (default: 24)
+
+CACHE (.claude/sf-toolkit-cache.json — gitignored):
+  Resolved context is cached to disk after the first skill invocation.
+  Subsequent skills read the cache directly, skipping the resolver agent.
+  Cache auto-expires after ttlHours or when the target-org alias changes.
+  Delete the file to force a fresh resolve: rm .claude/sf-toolkit-cache.json
 
 PER-DEVELOPER (.env — gitignored):
   SF_USER_ID            Your Salesforce user ID

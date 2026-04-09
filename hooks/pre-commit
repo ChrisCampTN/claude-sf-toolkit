@@ -1,7 +1,28 @@
 #!/bin/bash
 # claude-sf-toolkit pre-commit hook
-# 1. Run Prettier via lint-staged (if configured)
-# 2. Block force-app/ commits on main branch
+# 1. Run plugin structural validation (if in plugin repo)
+# 2. Run resolve-cache.js unit tests (if in plugin repo)
+# 3. Run Prettier via lint-staged (if configured)
+# 4. Block force-app/ commits on main branch
+
+# Plugin validation (only runs in the plugin repo itself, not consuming projects)
+if [ -f "scripts/validate-plugin.js" ]; then
+  echo "Running plugin validation..."
+  if ! node scripts/validate-plugin.js; then
+    echo "ERROR: Plugin validation failed. Fix issues before committing."
+    exit 1
+  fi
+  echo ""
+fi
+
+if [ -f "scripts/test-resolve-cache.js" ]; then
+  echo "Running resolve-cache tests..."
+  if ! node scripts/test-resolve-cache.js; then
+    echo "ERROR: resolve-cache.js tests failed. Fix issues before committing."
+    exit 1
+  fi
+  echo ""
+fi
 
 # Run lint-staged if available
 if command -v npx &> /dev/null && [ -f "package.json" ]; then

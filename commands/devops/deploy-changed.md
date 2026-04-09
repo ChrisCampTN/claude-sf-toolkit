@@ -33,10 +33,15 @@ Examples:
 
 ## Resolution
 
-Dispatch the `sf-toolkit-resolve` agent. Use the returned context for all
-org references, team lookups, and path resolution in subsequent steps.
-If `missing` contains values this skill requires, stop and instruct the
-developer to run `/setup`.
+**Cache-first resolution:**
+
+1. Read `.claude/sf-toolkit-cache.json` in the project root.
+2. If the file exists and `_cache.expiresAt` is after the current date/time, **and** no `--target-org` override was provided:
+   - Read `.sf/config.json` — confirm `target-org` matches `orgs.devAlias` in the cached context.
+   - If it matches: use the cached context (all keys except `_cache`). **Skip the agent dispatch.**
+3. If the cache is missing, expired, or the org alias doesn't match: dispatch the `sf-toolkit-resolve` agent. It will resolve fresh context and update the cache.
+
+Use the returned context for all org references, team lookups, and path resolution in subsequent steps. If `missing` contains values this skill requires, stop and instruct the developer to run `/setup`.
 
 ---
 
@@ -102,12 +107,11 @@ git diff --name-only {branch-name}...HEAD
 First, check for the script locally, then fall back to the plugin template:
 
 ```bash
-# Prefer local project script
+# Prefer local project script, fall back to plugin
 if [ -f scripts/metadata-validator.js ]; then
   VALIDATOR="scripts/metadata-validator.js"
 else
-  # Fall back to plugin script-templates/
-  VALIDATOR="$(dirname "$(dirname "$(realpath "$0")")")/script-templates/metadata-validator.js"
+  VALIDATOR="${CLAUDE_PLUGIN_ROOT}/script-templates/metadata-validator.js"
 fi
 ```
 

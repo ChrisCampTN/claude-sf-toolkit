@@ -1,5 +1,16 @@
 ---
-description: Query a Salesforce production org to gather platform metadata and generate a comprehensive platform brief document
+description: >
+  Use this agent when generating or refreshing the platform brief (docs/platform-brief.md). Dispatched by /setup during initial configuration and by /platform-review when the brief is stale.
+
+  <example>
+  Context: First-time project setup — no platform-brief.md exists yet.
+  user: "/setup"
+  assistant: "Dispatching platform-brief agent to query the production org and generate the initial platform inventory."
+  <commentary>The platform-brief agent runs org-wide SOQL queries to build a comprehensive metadata inventory.</commentary>
+  </example>
+model: inherit
+color: green
+tools: ["Read", "Write", "Bash", "Grep", "Glob", "mcp__Salesforce-DX__run_soql_query", "mcp__Salesforce-DX__list_all_orgs"]
 ---
 
 # SF Toolkit: Platform Brief Generator

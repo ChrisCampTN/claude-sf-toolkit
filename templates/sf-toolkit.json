@@ -4,5 +4,8 @@
   "team": {},
   "backlog": {
     "backend": "yaml"
+  },
+  "cache": {
+    "ttlHours": 24
   }
 }

@@ -1,5 +1,16 @@
 ---
-description: Gather git repository state, check for org drift, and report uncommitted changes and WI branch status
+description: >
+  Use this agent when /start-day needs git repository state and org drift analysis. Runs in parallel with active-work and external-context agents.
+
+  <example>
+  Context: Daily planning briefing — checking for uncommitted changes and branch status.
+  user: "/start-day"
+  assistant: "Dispatching git-state agent to analyze repository state, WI branches, and check for org metadata drift."
+  <commentary>This agent runs git commands and optionally queries the org for drift detection. It uses the drift-compare.js script if available.</commentary>
+  </example>
+model: inherit
+color: blue
+tools: ["Read", "Bash", "Grep", "Glob", "mcp__Salesforce-DX__run_soql_query"]
 ---
 
 # Start-Day: Git State Agent
@@ -61,7 +72,7 @@ sf project retrieve preview --target-org {{devOrgAlias}}
 sf data query --query "SELECT DeveloperName, LastModifiedDate, LastModifiedBy.Name FROM FlowDefinitionView WHERE IsActive = true AND ManageableState = 'unmanaged' ORDER BY LastModifiedDate DESC" --target-org {{devOrgAlias}} --json > /tmp/drift-start-day.json
 ```
 
-Check for local `scripts/drift-compare.js`. If not found, the skill should generate it from the plugin's `script-templates/drift-compare.js`.
+Check for local `scripts/drift-compare.js`. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/drift-compare.js`.
 
 ```bash
 node scripts/drift-compare.js --input /tmp/drift-start-day.json --type flows --since 7d --summary

@@ -25,10 +25,15 @@ Arguments can be:
 
 ## Resolution
 
-Dispatch the `sf-toolkit-resolve` agent. Use the returned context for all
-org references, team lookups, and path resolution in subsequent steps.
-If `missing` contains values this skill requires, stop and instruct the
-developer to run `/setup`.
+**Cache-first resolution:**
+
+1. Read `.claude/sf-toolkit-cache.json` in the project root.
+2. If the file exists and `_cache.expiresAt` is after the current date/time, **and** no `--target-org` override was provided:
+   - Read `.sf/config.json` — confirm `target-org` matches `orgs.devAlias` in the cached context.
+   - If it matches: use the cached context (all keys except `_cache`). **Skip the agent dispatch.**
+3. If the cache is missing, expired, or the org alias doesn't match: dispatch the `sf-toolkit-resolve` agent. It will resolve fresh context and update the cache.
+
+Use the returned context for all org references, team lookups, and path resolution in subsequent steps. If `missing` contains values this skill requires, stop and instruct the developer to run `/setup`.
 
 ---
 
@@ -258,7 +263,7 @@ If flow XML files are found:
    fi
    ```
 
-   If neither the local script nor a plugin `script-templates/flow-description-sync.js` exists, **skip this sub-step** silently — flow description sync is optional.
+   If neither the local `scripts/flow-description-sync.js` nor `${CLAUDE_PLUGIN_ROOT}/script-templates/flow-description-sync.js` exists, **skip this sub-step** silently — flow description sync is optional.
 
    The script:
    - Looks up each flow's category by scanning `docs/flows/` directories

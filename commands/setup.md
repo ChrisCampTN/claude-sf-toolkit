@@ -15,7 +15,7 @@ description: Interactive project bootstrapping and health check for Salesforce D
 Run `scripts/check-dependencies.sh` from the plugin directory and report results. No modifications to the project.
 
 ```bash
-bash "$(dirname "$(claude plugin path claude-sf-toolkit)")/scripts/check-dependencies.sh"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-dependencies.sh"
 ```
 
 If the script is not found, fall back to inline checks:
@@ -48,7 +48,7 @@ Report what was found and what's missing. If `sfdx-project.json` doesn't exist, 
 Run the scaffold script or create directories inline:
 
 ```bash
-node "$(dirname "$(claude plugin path claude-sf-toolkit)")/scripts/scaffold-project.js" "$(pwd)" "{backlogBackend}"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/scaffold-project.js" "$(pwd)" "{backlogBackend}"
 ```
 
 If the script isn't available, create directories using mkdir:
@@ -91,9 +91,14 @@ Write the file:
   },
   "backlog": {
     "backend": "{yaml|salesforce}"
+  },
+  "cache": {
+    "ttlHours": 24
   }
 }
 ```
+
+The `cache.ttlHours` controls how long the resolver cache (`.claude/sf-toolkit-cache.json`) is valid before skills re-dispatch the resolver agent. Default is 24 hours. Set lower for rapidly-changing environments, or higher for stable orgs.
 
 If the file already exists, show its contents and ask if the user wants to update it. If not, skip.
 
@@ -111,7 +116,7 @@ Copy templates for any missing files. Only create files that don't already exist
 | `docs/build-review-process.md` | `templates/build-review-process.md.template` | Tell user to customize |
 | `.claude/memory/MEMORY.md` | `templates/MEMORY.md.template` | Replace {{PROJECT_NAME}} with project name from sfdx-project.json or user input |
 
-For template files, read from the plugin's templates directory and write to the project. Replace `{{PROJECT_NAME}}` placeholders with the actual project name.
+For template files, read from `${CLAUDE_PLUGIN_ROOT}/templates/` and write to the project. Replace `{{PROJECT_NAME}}` placeholders with the actual project name.
 
 ### Step 5: `.env` + SF_USER_ID
 
@@ -126,7 +131,7 @@ If `.env` is missing or doesn't contain `SF_USER_ID`:
    SF_USER_ID={id}
    ```
 6. If `.env` doesn't exist, create it. If it exists, append.
-7. Verify `.env` is in `.gitignore`. If not, warn the user.
+7. Verify `.env` and `.claude/sf-toolkit-cache.json` are in `.gitignore`. If not, warn the user.
 
 Also check for `SLACK_WEBHOOK_URL` in `.env`. If missing, inform the user that Slack notifications won't work until they add it, and provide the format: `SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...`
 
@@ -147,7 +152,7 @@ If the production org isn't configured yet, skip this step and note it in the fi
 
 If `CLAUDE.md` doesn't exist:
 
-1. Read the CLAUDE.md template from the plugin's `templates/CLAUDE.md.template`
+1. Read `${CLAUDE_PLUGIN_ROOT}/templates/CLAUDE.md.template`
 2. Ask the user to fill in the interactive placeholders:
    - `{{PROJECT_DESCRIPTION}}`: one paragraph about the project
    - `{{MANAGED_PACKAGE_NOTES}}`: what middleware/packages handle integrations
@@ -199,7 +204,15 @@ claude plugin install {plugin} --scope project
 
 Report which are installed, which were auto-installed, and which recommended plugins are missing with install commands.
 
-### Step 11: Summary Report
+### Step 11: Invalidate Resolver Cache
+
+Delete `.claude/sf-toolkit-cache.json` if it exists — setup may have changed org aliases, team mapping, or config values that would make a stale cache dangerous.
+
+```bash
+rm -f .claude/sf-toolkit-cache.json
+```
+
+### Step 12: Summary Report
 
 Print a structured summary:
 

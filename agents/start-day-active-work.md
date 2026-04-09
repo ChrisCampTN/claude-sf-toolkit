@@ -1,5 +1,16 @@
 ---
-description: Merge work item status from MEMORY.md, backlog, and DevOps Center into a unified view with drift detection
+description: >
+  Use this agent when /start-day needs a unified view of active work across MEMORY.md, backlog, and DevOps Center. Runs in parallel with git-state and external-context agents.
+
+  <example>
+  Context: Daily planning briefing — need to know what work items are active.
+  user: "/start-day"
+  assistant: "Dispatching active-work agent to merge WI status from memory, backlog, and DevOps Center."
+  <commentary>This agent reads local files and queries DevOps Center to build a unified work status view split by assignment.</commentary>
+  </example>
+model: inherit
+color: yellow
+tools: ["Read", "Grep", "Glob", "Bash", "mcp__Salesforce-DX__run_soql_query", "mcp__Salesforce-DX__list_devops_center_work_items"]
 ---
 
 # Start-Day: Active Work Agent

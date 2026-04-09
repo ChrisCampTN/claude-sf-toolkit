@@ -35,10 +35,15 @@ Examples:
 
 ## Resolution
 
-Dispatch the `sf-toolkit-resolve` agent. Use the returned context for all
-org references, team lookups, and path resolution in subsequent steps.
-If `missing` contains values this skill requires, stop and instruct the
-developer to run `/setup`.
+**Cache-first resolution:**
+
+1. Read `.claude/sf-toolkit-cache.json` in the project root.
+2. If the file exists and `_cache.expiresAt` is after the current date/time:
+   - Read `.sf/config.json` — confirm `target-org` matches `orgs.devAlias` in the cached context.
+   - If it matches: use the cached context (all keys except `_cache`). **Skip the agent dispatch.**
+3. If the cache is missing, expired, or the org alias doesn't match: dispatch the `sf-toolkit-resolve` agent. It will resolve fresh context and update the cache.
+
+Use the returned context for all org references, team lookups, and path resolution in subsequent steps. If `missing` contains values this skill requires, stop and instruct the developer to run `/setup`.
 
 ---
 
@@ -279,7 +284,7 @@ Then continue with the standard backlog proposal workflow below for each extract
 
 For each **Adopt Now** and **Evaluate** feature, determine if it warrants a backlog item:
 
-1. **Check for existing backlog overlap.** For each script below, check for a local copy in the project's `scripts/` directory first. If not found, generate it from the plugin's `script-templates/` directory.
+1. **Check for existing backlog overlap.** For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
    ```bash
    node scripts/backlog-search.js --text "{feature keywords}"
@@ -326,7 +331,7 @@ Approve all / approve 1,3 / skip 2 / edit 1: {text} / none
 
 Wait for developer approval before writing any backlog items. For approved items, use `backlog-add.js`:
 
-For each script below, check for a local copy in the project's `scripts/` directory first. If not found, generate it from the plugin's `script-templates/` directory.
+For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
 ```bash
 node scripts/backlog-add.js --title "{title}" --description "{desc}" --category "{cat}" --effort "{effort}" --complexity "{complexity}" --tags "{tags}" --source "release-review" --submitted-by "Claude"
@@ -373,7 +378,7 @@ Read `docs/release-reviews/platform.md`. Extract all features from Adopt Now, Ev
 
 ### Step C3 — Cross-Reference Backlog
 
-For each script below, check for a local copy in the project's `scripts/` directory first. If not found, generate it from the plugin's `script-templates/` directory.
+For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
 ```bash
 node scripts/backlog-search.js --text "{area}"

@@ -1,5 +1,15 @@
 ---
-description: Gather calendar events, relevant emails, and Slack activity for daily planning context
+description: >
+  Use this agent when /start-day needs external context from calendar, email, and Slack. Runs in parallel with git-state and active-work agents. Skipped when --no-external is passed.
+
+  <example>
+  Context: Daily planning briefing — checking for meetings, emails, and Slack messages.
+  user: "/start-day"
+  assistant: "Dispatching external-context agent to gather today's calendar events, relevant emails, and Slack activity."
+  <commentary>This agent uses MCP integrations for calendar, email, and Slack. It degrades gracefully if MCP servers are unavailable.</commentary>
+  </example>
+model: inherit
+color: magenta
 ---
 
 # Start-Day: External Context Agent

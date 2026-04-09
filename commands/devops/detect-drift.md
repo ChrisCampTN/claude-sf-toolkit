@@ -34,10 +34,15 @@ Examples:
 
 ## Resolution
 
-Dispatch the `sf-toolkit-resolve` agent. Use the returned context for all
-org references, team lookups, and path resolution in subsequent steps.
-If `missing` contains values this skill requires, stop and instruct the
-developer to run `/setup`.
+**Cache-first resolution:**
+
+1. Read `.claude/sf-toolkit-cache.json` in the project root.
+2. If the file exists and `_cache.expiresAt` is after the current date/time, **and** no `--target-org` override was provided:
+   - Read `.sf/config.json` — confirm `target-org` matches `orgs.devAlias` in the cached context.
+   - If it matches: use the cached context (all keys except `_cache`). **Skip the agent dispatch.**
+3. If the cache is missing, expired, or the org alias doesn't match: dispatch the `sf-toolkit-resolve` agent. It will resolve fresh context and update the cache.
+
+Use the returned context for all org references, team lookups, and path resolution in subsequent steps. If `missing` contains values this skill requires, stop and instruct the developer to run `/setup`.
 
 ---
 
@@ -141,7 +146,7 @@ ls scripts/drift-compare.js 2>/dev/null
 If not found, fall back to the plugin's bundled version:
 
 ```bash
-node "{plugin-path}/script-templates/drift-compare.js" --input /tmp/drift-org-query.json --type {flows|objects} --since {since_date} --json
+node "${CLAUDE_PLUGIN_ROOT}/script-templates/drift-compare.js" --input /tmp/drift-org-query.json --type {flows|objects} --since {since_date} --json
 ```
 
 If found locally, use the local version:
