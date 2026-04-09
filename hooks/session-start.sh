@@ -16,6 +16,29 @@ cd "$PROJECT_DIR"
 WARNINGS=()
 INSTALLED=()
 
+# --- 0. Plugin version notification ---
+
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-}"
+if [ -n "$PLUGIN_ROOT" ] && [ -f "$PLUGIN_ROOT/package.json" ]; then
+  CURRENT_VERSION=$(node -e "console.log(require('$PLUGIN_ROOT/package.json').version)" 2>/dev/null || echo "")
+  LAST_VERSION_FILE="$PROJECT_DIR/.claude/sf-toolkit-last-version"
+
+  if [ -n "$CURRENT_VERSION" ]; then
+    LAST_VERSION=""
+    if [ -f "$LAST_VERSION_FILE" ]; then
+      LAST_VERSION=$(cat "$LAST_VERSION_FILE" 2>/dev/null || echo "")
+    fi
+
+    if [ "$CURRENT_VERSION" != "$LAST_VERSION" ]; then
+      mkdir -p "$(dirname "$LAST_VERSION_FILE")"
+      echo "$CURRENT_VERSION" > "$LAST_VERSION_FILE"
+      if [ -n "$LAST_VERSION" ]; then
+        echo "SF Toolkit updated: v${LAST_VERSION} -> v${CURRENT_VERSION} — run /help or see docs/plugin-changelog.md"
+      fi
+    fi
+  fi
+fi
+
 # --- 1. Claude Code plugin dependencies ---
 
 PLUGIN_LIST=$(claude plugin list 2>/dev/null || echo "")
