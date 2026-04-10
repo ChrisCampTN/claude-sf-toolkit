@@ -1,5 +1,22 @@
 # Claude SF Toolkit — Changelog
 
+## v1.5.0 (2026-04-10)
+
+### Added
+- **LWC bundle completeness check** — metadata-validator.js verifies .js, .html, .js-meta.xml all exist when any LWC file is in scope
+- **Apex controller import verification** — metadata-validator.js scans LWC .js files for `@salesforce/apex/` imports and confirms the class exists locally
+- **LWC preflight suite** — skill-preflight.md new `lwc` suite: W1 bundle structure, W2 Apex imports, W3 Jest test coverage, W4 LWC dependency graph
+- **Jest test execution in deploy** — deploy-changed.md runs `npx lwc-jest --findRelatedTests` on changed LWC files (conditional on `@salesforce/sfdx-lwc-jest` being installed)
+- **Jest pre-check in build validation** — validate-build.md runs Jest for LWC components, reports pass/fail as auto-verdicts
+- **LWC readiness check in /setup** — Step 11 detects LWC components, checks for Jest config, scans for test files, recommends install
+
+### Fixed
+- **Hardcoded backlog categories removed** — backlog-render.js, backlog-add.js, backlog-validate.js now read categories from `config/sf-toolkit.json` → `backlog.categories`, fall back to extracting from data
+- **Plugin install command** — corrected to two-step `marketplace add && install` (direct URL doesn't work)
+
+### Changed
+- **CLAUDE.md** — added config-driven values pattern, CRLF warning, distribution instructions
+
 ## v1.4.0 (2026-04-09)
 
 ### Added
