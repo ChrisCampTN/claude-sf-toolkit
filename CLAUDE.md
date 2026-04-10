@@ -18,6 +18,7 @@
 - Cache-first resolution: skills read `.claude/sf-toolkit-cache.json` before dispatching resolver agent
 - Script resolution: check local `scripts/` first, fall back to `${CLAUDE_PLUGIN_ROOT}/script-templates/`
 - All 18 skills share identical Resolution section — batch-edit with `replace_all` when changing it
+- Config-driven values: scripts read from `config/sf-toolkit.json`, fall back to extracting from data, never hardcode project-specific values (categories, team names, etc.)
 
 ## Version Management
 - Three files must stay in sync: package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json
@@ -27,6 +28,7 @@
 - Read files before editing (Edit tool requires prior Read even if you've grepped the content)
 - Use `replace_all: true` for renaming patterns across files (paths, common text blocks)
 - 18 skill files share the same Resolution section — grep to verify all were updated, zero old matches remain
+- Windows CRLF: when parsing markdown frontmatter with regex, always `.replace(/\r\n/g, "\n")` first
 
 ## Validation & Testing
 
@@ -48,3 +50,9 @@ After significant changes, run the plugin-dev skills for best-practice validatio
 - `/plugin-dev:skill-development` — verify command descriptions, progressive disclosure, writing style
 - `/plugin-dev:plugin-settings` — verify per-project state patterns (`.claude/` directory, gitignore)
 - Use the `superpowers:code-reviewer` agent for a cross-cutting review against all checks at once
+
+## Distribution
+- Install requires two commands in the same session: `claude plugin marketplace add ChrisCampTN/claude-sf-toolkit && claude plugin install claude-sf-toolkit --scope project`
+- Direct URL install (`claude plugin install https://...`) does NOT work
+- Users must re-run the combined command to get updates (no auto-update)
+- Session-start hook notifies users when the plugin version changes
