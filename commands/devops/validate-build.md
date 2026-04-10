@@ -165,6 +165,13 @@ For each item, run the appropriate verification:
 
 - Verify component directory and key files exist (`.js`, `.html`, `.js-meta.xml`)
 - Check `isExposed` and targets in meta XML match spec
+- Verify Apex controller imports resolve (scan `.js` for `@salesforce/apex/` imports, confirm classes exist)
+- Verify LWC-to-LWC imports resolve (scan `.js` for `c/componentName` imports, confirm component directories exist)
+- **Run Jest tests** if `@salesforce/sfdx-lwc-jest` is configured:
+  ```bash
+  npx lwc-jest -- --testPathPattern="{componentName}" --passWithNoTests 2>&1
+  ```
+  Report pass/fail counts. Failed tests get `[FAIL]` auto-verdict. Passing tests get `[PASS]`.
 
 ### Pre-Check Results
 

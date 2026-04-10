@@ -6,7 +6,8 @@
  * metadata-validator.js — Validate Salesforce metadata files for deployment readiness
  *
  * Checks XML well-formedness, API version, merge conflict markers, duplicate elements,
- * standard object field detection, and file classification.
+ * standard object field detection, LWC bundle completeness, Apex controller imports,
+ * and file classification.
  *
  * Usage:
  *   node scripts/metadata-validator.js [options]
@@ -446,6 +447,84 @@ function validate(files) {
     result.deployable.push(entry);
     result.summary.by_type[metaType] =
       (result.summary.by_type[metaType] || 0) + 1;
+  }
+
+  // -------------------------------------------------------------------------
+  // LWC bundle completeness + Apex controller import checks
+  // -------------------------------------------------------------------------
+
+  const lwcFiles = result.deployable.filter((e) => e.type === "LightningComponentBundle");
+  if (lwcFiles.length > 0) {
+    // Group by component bundle directory
+    const bundles = {};
+    for (const entry of lwcFiles) {
+      const norm = normalizeToForward(entry.path);
+      const lwcMatch = norm.match(/\/lwc\/([^/]+)\//);
+      if (lwcMatch) {
+        const name = lwcMatch[1];
+        if (!bundles[name]) {
+          bundles[name] = { dir: path.dirname(entry.path), files: [] };
+          // Walk up to the component dir (may be nested)
+          const parts = entry.path.replace(/\\/g, "/").split("/");
+          const lwcIdx = parts.lastIndexOf("lwc");
+          if (lwcIdx >= 0 && parts[lwcIdx + 1]) {
+            bundles[name].dir = parts.slice(0, lwcIdx + 2).join(path.sep);
+          }
+        }
+        bundles[name].files.push(path.basename(entry.path));
+      }
+    }
+
+    for (const [name, bundle] of Object.entries(bundles)) {
+      const dir = bundle.dir;
+      const hasJs = fs.existsSync(path.join(dir, `${name}.js`));
+      const hasHtml = fs.existsSync(path.join(dir, `${name}.html`));
+      const hasMeta = fs.existsSync(path.join(dir, `${name}.js-meta.xml`));
+
+      if (!hasMeta) {
+        result.errors.push({
+          path: dir,
+          type: "LightningComponentBundle",
+          error: `LWC bundle "${name}" missing ${name}.js-meta.xml`
+        });
+      }
+      if (!hasJs) {
+        result.errors.push({
+          path: dir,
+          type: "LightningComponentBundle",
+          error: `LWC bundle "${name}" missing ${name}.js`
+        });
+      }
+      if (!hasHtml) {
+        // HTML is optional for headless LWC (service components)
+        // Only warn, don't error
+        result.warnings.push({
+          path: dir,
+          warning: `LWC bundle "${name}" has no ${name}.html (OK for service components)`
+        });
+      }
+
+      // Check Apex controller imports in .js file
+      const jsPath = path.join(dir, `${name}.js`);
+      if (hasJs) {
+        try {
+          const jsContent = fs.readFileSync(jsPath, "utf-8");
+          const apexImports = [...jsContent.matchAll(/from\s+['"]@salesforce\/apex\/([^.'"]+)/g)];
+          for (const imp of apexImports) {
+            const className = imp[1];
+            const classFile = path.resolve(REPO_ROOT, METADATA_PATH, "classes", `${className}.cls`);
+            if (!fs.existsSync(classFile)) {
+              result.warnings.push({
+                path: jsPath,
+                warning: `Imports Apex class "${className}" but ${METADATA_PATH}/classes/${className}.cls not found locally`
+              });
+            }
+          }
+        } catch {
+          // Can't read .js file — skip import check
+        }
+      }
+    }
   }
 
   result.summary.deployable = result.deployable.length;

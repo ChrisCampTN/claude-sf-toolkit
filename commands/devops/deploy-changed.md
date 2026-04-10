@@ -217,6 +217,27 @@ run_code_analyzer(
 )
 ```
 
+### LWC Jest tests (if `.js` LWC files present and Jest configured)
+
+**Jest (informational tier):** Check if the project has `@salesforce/sfdx-lwc-jest` configured:
+
+```bash
+node -e "try { require.resolve('@salesforce/sfdx-lwc-jest'); console.log('true'); } catch { console.log('false'); }"
+```
+
+If Jest is available, run related tests for changed LWC JavaScript files:
+
+```bash
+npx lwc-jest -- --findRelatedTests {space-separated .js file paths} --passWithNoTests 2>&1
+```
+
+Collect results:
+- If tests pass: report "LWC Jest: {n} tests passed" (informational)
+- If tests fail: report failures as **prominent tier** — list failing test names and assertion errors. Warn the user but don't block deployment (they may be deploying a fix).
+- If no tests found: silently skip (no output)
+
+If Jest is NOT configured, skip this subsection entirely (no warning — W3 in preflight already covers this).
+
 ### Visualforce scanning (if `.page` or `.component` files present)
 
 **Code Analyzer (informational tier):** Run `run_code_analyzer` with selector `Visualforce:Security` on all VF files in the deploy set.
@@ -230,10 +251,10 @@ run_code_analyzer(
 
 ### Parallelism
 
-ApexGuru calls run sequentially (one MCP call per class). Code Analyzer and flow scan can run in parallel since they target different files and use independent tools. Structure execution as:
+ApexGuru calls run sequentially (one MCP call per class). Code Analyzer, flow scan, and Jest can run in parallel since they target different files and use independent tools. Structure execution as:
 
 1. Start ApexGuru scanning (sequential per class)
-2. In parallel: start Code Analyzer batch + flow scan
+2. In parallel: start Code Analyzer batch + flow scan + Jest (if configured)
 3. Collect all results before proceeding to Step 5
 
 ### No findings

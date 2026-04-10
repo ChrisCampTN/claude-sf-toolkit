@@ -41,13 +41,13 @@ Each suite is a group of related checks. When preflight is called with a skill n
 | Skill             | Suites Run                                            |
 | ----------------- | ----------------------------------------------------- |
 | `doc-flows`       | `git`, `flows`, `metadata`                            |
-| `doc-components`  | `git`, `org`, `metadata`                              |
+| `doc-components`  | `git`, `org`, `metadata`, `lwc`                       |
 | `kb-gap-analysis` | `git`, `org`, `kb`                                    |
 | `kb-publish`      | `git`, `org`, `kb`                                    |
 | `devops-commit`   | _(inline only — circular dependency, see note below)_ |
 | `design-review`   | `git`, `metadata`                                     |
-| `validate-build`  | `git`, `org`                                          |
-| `deploy-changed`  | `git`, `org`, `metadata`                              |
+| `validate-build`  | `git`, `org`, `lwc`                                   |
+| `deploy-changed`  | `git`, `org`, `metadata`, `lwc`                       |
 | `detect-drift`    | `org`                                                 |
 | `test-flows`      | `git`, `org`, `metadata`                              |
 | `wrap-up`         | `git`                                                 |
@@ -292,6 +292,68 @@ Report counts and flag any object over 500K records with a governor limit adviso
 
 ---
 
+## Suite: `lwc` — LWC Component Checks
+
+Runs only when the changed file set or skill scope includes LWC files (anything under `{context.metadataPath}/lwc/`). If no LWC files are in scope, skip this suite entirely.
+
+### W1 — Bundle Completeness
+
+For each LWC component directory in scope, verify required files exist:
+
+- `{componentName}.js` — **required** (FAIL if missing)
+- `{componentName}.js-meta.xml` — **required** (FAIL if missing)
+- `{componentName}.html` — **optional** for service components (WARN if missing, INFO note "OK for headless/service components")
+
+Use the metadata-validator script which includes LWC bundle checks:
+
+```bash
+node scripts/metadata-validator.js --files "{lwc file paths}" --json
+```
+
+Check the `errors` array for `LWC bundle` messages.
+
+### W2 — Apex Controller Import Check
+
+For each `.js` file in LWC scope, scan for Apex controller imports:
+
+```javascript
+import methodName from '@salesforce/apex/ClassName.methodName';
+```
+
+For each imported class, verify `{context.metadataPath}/classes/{ClassName}.cls` exists locally. If missing:
+- **WARN** if the class is not in the current deploy set (may already be deployed)
+- **FAIL** if the component AND its controller are both being deployed but the controller file doesn't exist
+
+### W3 — Jest Test Coverage
+
+Check if the project has Jest configured:
+
+```bash
+node -e "try { require.resolve('@salesforce/sfdx-lwc-jest'); console.log('true'); } catch { console.log('false'); }"
+```
+
+If Jest is available:
+- For each LWC component in scope, check if `__tests__/{componentName}.test.js` (or `.test.ts`) exists
+- **INFO** if test exists
+- **WARN** if no test file found — `"{componentName}" has no Jest test file`
+- Do NOT run the tests here (that happens in deploy-changed Step 4)
+
+If Jest is not configured:
+- **INFO** — `sfdx-lwc-jest not installed — LWC unit tests will not be available. Install with: npm install --save-dev @salesforce/sfdx-lwc-jest`
+
+### W4 — LWC Dependency Graph (changed components only)
+
+For each changed LWC `.js` file, scan imports for other LWC components:
+
+```javascript
+import { something } from 'c/otherComponent';
+```
+
+Verify the imported component exists under `{context.metadataPath}/lwc/{otherComponent}/`. If missing:
+- **FAIL** — `Imports c/{otherComponent} but component directory not found`
+
+---
+
 ## Output Format
 
 Present results grouped by suite, using clear pass/warn/fail indicators:
@@ -325,6 +387,12 @@ Present results grouped by suite, using clear pass/warn/fail indicators:
 - [PASS] F2 — No managed package flows in scope
 - [INFO] F3 — 12 new, 3 updates, 0 stale
 - [INFO] F4 — 8 flows missing <description> element
+
+### LWC Checks
+- [PASS] W1 — All LWC bundles complete (2 components)
+- [PASS] W2 — Apex controller imports resolved
+- [WARN] W3 — paymentForm has no Jest test file
+- [PASS] W4 — LWC dependency graph valid
 
 ---
 
