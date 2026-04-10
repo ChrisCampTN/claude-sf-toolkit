@@ -3,7 +3,8 @@
   "searchKeywordsLastReviewed": "",
   "team": {},
   "backlog": {
-    "backend": "yaml"
+    "backend": "yaml",
+    "categories": []
   },
   "cache": {
     "ttlHours": 24

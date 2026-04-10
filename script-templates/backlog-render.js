@@ -85,8 +85,28 @@ const STATUSES = [
   "In Progress",
   "Deferred"
 ];
-const CATEGORIES = ["Platform", "Integrations", "Portal", "Operations"];
 const PRIORITIES = ["P1", "P2", "P3", "P4", "Unset"];
+
+/**
+ * Load categories from config/sf-toolkit.json → backlog.categories.
+ * Falls back to extracting unique categories from backlog items.
+ */
+function loadCategories(items) {
+  // 1. Try config file
+  const configPath = path.resolve(REPO_ROOT, "config/sf-toolkit.json");
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (config.backlog && Array.isArray(config.backlog.categories) && config.backlog.categories.length > 0) {
+      return config.backlog.categories;
+    }
+  } catch {
+    // Config missing or invalid — fall through
+  }
+
+  // 2. Extract unique categories from existing items
+  const seen = [...new Set((items || []).map((i) => i.category).filter(Boolean))];
+  return seen.sort();
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -222,11 +242,11 @@ function renderSummaryTable(items, archivedCount) {
   return lines;
 }
 
-function renderCategoryMatrix(items) {
+function renderCategoryMatrix(items, categories) {
   const lines = ["## By Category", ""];
   lines.push("| Category | Total | P1 | P2 | P3 | P4 | Unset |");
   lines.push("|----------|------:|---:|---:|---:|---:|------:|");
-  for (const cat of CATEGORIES) {
+  for (const cat of categories) {
     const catItems = items.filter((i) => i.category === cat);
     const total = catItems.length;
     const counts = PRIORITIES.map(
@@ -298,9 +318,9 @@ function renderWiCrossReference(items) {
   return lines;
 }
 
-function renderByCategorySections(items) {
+function renderByCategorySections(items, categories) {
   const lines = [];
-  for (const cat of CATEGORIES) {
+  for (const cat of categories) {
     const catItems = items.filter((i) => i.category === cat);
     lines.push(`## ${cat}`, "");
     if (catItems.length === 0) {
@@ -408,14 +428,16 @@ function main() {
   const archived = (archiveData && archiveData.items) || [];
   const archivedCount = archived.length;
 
+  const categories = loadCategories(items);
+
   const sections = [
     ...renderHeader(),
     ...renderExecutiveSummary(items),
     ...renderSummaryTable(items, archivedCount),
-    ...renderCategoryMatrix(items),
+    ...renderCategoryMatrix(items, categories),
     ...renderPriorityBoard(items),
     ...renderWiCrossReference(items),
-    ...renderByCategorySections(items),
+    ...renderByCategorySections(items, categories),
     ...renderTagsIndex(items),
     ...renderRecentlyUpdated(items),
     ...renderFooter(archivedCount)

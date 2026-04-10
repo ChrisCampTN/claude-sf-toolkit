@@ -10,7 +10,7 @@
  *   --tags-path <path>      Path to tags.yaml (default: docs/backlog/tags.yaml)
  *   --title <text>          Item title (required)
  *   --description <text>    Item description (required)
- *   --category <name>       Category (required): Platform, Integrations, Portal, Operations
+ *   --category <name>       Category (required): reads valid values from config/sf-toolkit.json → backlog.categories
  *   --status <status>       Initial status (default: Captured)
  *   --priority <P1-P4>      Priority level (default: Unset)
  *   --effort <S|M|L|XL>     Effort estimate (default: Unset)
@@ -38,7 +38,23 @@ const yaml = require("js-yaml");
 
 const REPO_ROOT = path.join(__dirname, "..");
 
-const VALID_CATEGORIES = ["Platform", "Integrations", "Portal", "Operations"];
+/**
+ * Load categories from config/sf-toolkit.json → backlog.categories.
+ * Falls back to extracting unique categories from backlog items.
+ */
+function loadCategories(items) {
+  const configPath = path.resolve(REPO_ROOT, "config/sf-toolkit.json");
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (config.backlog && Array.isArray(config.backlog.categories) && config.backlog.categories.length > 0) {
+      return config.backlog.categories;
+    }
+  } catch {
+    // Config missing or invalid — fall through
+  }
+  const seen = [...new Set((items || []).map((i) => i.category).filter(Boolean))];
+  return seen.sort();
+}
 const VALID_STATUSES = ["Captured", "Evaluated", "Prioritized", "Deferred"];
 const VALID_PRIORITIES = ["P1", "P2", "P3", "P4", "Unset"];
 const VALID_EFFORTS = ["S", "M", "L", "XL", "Unset"];
@@ -198,9 +214,10 @@ function main() {
   const validTags = tagsDoc.tags || [];
 
   // --- Validate category ---
-  if (!VALID_CATEGORIES.includes(args.category)) {
+  const validCategories = loadCategories(backlog.items || []);
+  if (validCategories.length > 0 && !validCategories.includes(args.category)) {
     console.error(
-      `Error: invalid category "${args.category}". Must be one of: ${VALID_CATEGORIES.join(", ")}`
+      `Error: invalid category "${args.category}". Must be one of: ${validCategories.join(", ")}`
     );
     process.exit(1);
   }

@@ -84,7 +84,24 @@ const TAGS_FILE = path.resolve(
   CLI_ARGS["tags-path"] || "docs/backlog/tags.yaml"
 );
 
-const VALID_CATEGORIES = ["Platform", "Integrations", "Portal", "Operations"];
+/**
+ * Load categories from config/sf-toolkit.json → backlog.categories.
+ * Falls back to extracting unique categories from backlog items.
+ * Returns empty array if no categories defined (skips validation).
+ */
+function loadCategories(items) {
+  const configPath = path.resolve(REPO_ROOT, "config/sf-toolkit.json");
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (config.backlog && Array.isArray(config.backlog.categories) && config.backlog.categories.length > 0) {
+      return config.backlog.categories;
+    }
+  } catch {
+    // Config missing or invalid — fall through
+  }
+  return [];
+}
+let VALID_CATEGORIES = [];
 const VALID_STATUSES = [
   "Captured",
   "Evaluated",
@@ -225,7 +242,7 @@ function validateItem(item, fileName, idPattern) {
   }
 
   // Enum validations
-  if (item.category && !VALID_CATEGORIES.includes(item.category)) {
+  if (item.category && VALID_CATEGORIES.length > 0 && !VALID_CATEGORIES.includes(item.category)) {
     error(
       fileName,
       id,
@@ -375,6 +392,9 @@ function validateItem(item, fileName, idPattern) {
     }
   }
 }
+
+// Load valid categories from config (or skip category validation if none defined)
+VALID_CATEGORIES = loadCategories(backlogItems);
 
 // Validate backlog items
 for (const item of backlogItems) {
