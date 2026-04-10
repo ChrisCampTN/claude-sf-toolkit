@@ -204,7 +204,24 @@ claude plugin install {plugin} --scope project
 
 Report which are installed, which were auto-installed, and which recommended plugins are missing with install commands.
 
-### Step 11: Invalidate Resolver Cache
+### Step 11: LWC Development Readiness
+
+Check if the project has LWC components and whether the testing toolchain is configured:
+
+1. **Detect LWC presence:** Check if `{context.metadataPath}/lwc/` exists and contains component directories.
+2. **If LWC components exist:**
+   - Check if `package.json` exists at the project root. If not, warn: "No package.json — LWC Jest tests require a Node.js project. Run `npm init -y` to create one."
+   - Check if `@salesforce/sfdx-lwc-jest` is in `devDependencies`:
+     ```bash
+     node -e "try { require.resolve('@salesforce/sfdx-lwc-jest'); console.log('installed'); } catch { console.log('missing'); }"
+     ```
+   - If missing, recommend: `npm install --save-dev @salesforce/sfdx-lwc-jest`
+   - Check if a Jest config exists (`jest.config.js`, `jest.config.ts`, or `jest` key in `package.json`). If missing, recommend creating one.
+   - Check if any `__tests__/` directories exist under `{context.metadataPath}/lwc/`. If zero test files found across all components, note: "No LWC test files found. The `/deploy-changed` and `/validate-build` skills will run Jest tests automatically when they exist."
+3. **If no LWC components exist:** Skip this step silently.
+
+### Step 12: Invalidate Resolver Cache
+
 
 Delete `.claude/sf-toolkit-cache.json` if it exists — setup may have changed org aliases, team mapping, or config values that would make a stale cache dangerous.
 
@@ -212,7 +229,7 @@ Delete `.claude/sf-toolkit-cache.json` if it exists — setup may have changed o
 rm -f .claude/sf-toolkit-cache.json
 ```
 
-### Step 12: Summary Report
+### Step 13: Summary Report
 
 Print a structured summary:
 
@@ -235,6 +252,11 @@ Skipped (already existed):
   - README.md
   ... (list everything that already existed)
 
+LWC Readiness:
+  {LWC components found: N components}
+  {Jest: installed / ⚠ not installed}
+  {Test files: N components with tests, M without}
+
 Warnings:
   ⚠ Missing SLACK_WEBHOOK_URL in .env
   ... (list any warnings)
@@ -243,6 +265,7 @@ Next Steps:
   1. Review and customize docs/coding-standards.md
   2. Review and customize docs/build-review-process.md
   3. Add SLACK_WEBHOOK_URL to .env for flow change notifications
-  4. Run /help to explore available skills
-  5. Run /start-day to begin your first session
+  4. {If Jest missing and LWC present: Install LWC Jest: npm install --save-dev @salesforce/sfdx-lwc-jest}
+  5. Run /help to explore available skills
+  6. Run /start-day to begin your first session
 ```
