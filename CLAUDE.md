@@ -29,6 +29,9 @@
 - Use `replace_all: true` for renaming patterns across files (paths, common text blocks)
 - 18 skill files share the same Resolution section — grep to verify all were updated, zero old matches remain
 - Windows CRLF: when parsing markdown frontmatter with regex, always `.replace(/\r\n/g, "\n")` first
+- When batch-editing shared sections, preserve skill-specific content above/below — only touch the targeted pattern
+- After any multi-file change, run `node scripts/validate-plugin.js` before claiming done — zero failures required
+- If a change touches scripts, also run `node scripts/test-resolve-cache.js`
 
 ## Validation & Testing
 
