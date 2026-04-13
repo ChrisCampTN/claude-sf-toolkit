@@ -55,3 +55,74 @@ Report the resolved mode:
 ```text
 ### Claude Review — {MODE}{" (plugin context)" if PLUGIN_MODE}
 ```
+
+---
+
+## Weekly Review (Default Mode) — Steps 0-5
+
+### Step 0 — Check Versions
+
+Get the current installed versions and compare against last-reviewed versions stored in the rolling report header.
+
+**Claude Code version:**
+
+```bash
+claude --version
+```
+
+**Installed plugins:**
+
+```bash
+claude plugin list
+```
+
+Parse the output for tracked plugins. The tracked plugin list comes from `${CLAUDE_PLUGIN_ROOT}/scripts/check-dependencies.sh` — currently: `superpowers`, `commit-commands` (required) and `context7`, `skill-creator` (optional).
+
+**Read last-reviewed state from report header:**
+
+Read the first 10 lines of `docs/tooling-reviews/claude-code.md`. Parse:
+
+- `**Claude Code Version:**` — the version at last review
+- `**Plugin Versions:**` — `name version` pairs at last review
+- `**Last Reviewed:**` — date of last review
+
+If the report file does not exist, treat this as a **first run** (baseline mode) — proceed through all steps and create the report file.
+
+**Version comparison:**
+
+```
+CC_CURRENT = claude --version output
+CC_LAST = "Claude Code Version" from report header
+PLUGINS_CURRENT = { name: version } from claude plugin list
+PLUGINS_LAST = { name: version } from report header
+CC_CHANGED = CC_CURRENT != CC_LAST
+PLUGINS_CHANGED = any plugin version differs
+```
+
+If BOTH are unchanged (no new releases since last review):
+
+```text
+### No New Releases
+
+**Claude Code:** {CC_CURRENT} (last reviewed {date})
+**Plugins:** all unchanged (last reviewed {date})
+
+No new releases since last review. Run `/claude-review --audit` for a capability audit or `/claude-review --context <area>` for a domain lookup.
+```
+
+Stop here. Do not proceed to Step 1.
+
+If either changed, report which have updates and continue:
+
+```text
+### Version Check
+
+**Claude Code:** {CC_LAST} -> {CC_CURRENT} {NEW or unchanged}
+**Plugins:**
+  superpowers: {last} -> {current} {NEW or unchanged}
+  commit-commands: {last} -> {current} {NEW or unchanged}
+  context7: {last} -> {current} {NEW or unchanged}
+  skill-creator: {last} -> {current} {NEW or unchanged}
+
+Proceeding with review for updated tool(s).
+```
