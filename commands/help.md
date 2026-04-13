@@ -30,12 +30,13 @@ SF DevOps (7):
   /test-flows        Native FlowTest metadata generator for record-triggered flows
   /wi-sync           Sync DevOps Center WI status against MEMORY.md
 
-Documentation (6):
+Documentation (7):
   /release-review    Salesforce release note analysis and backlog item proposals
   /doc-flows         Flow technical documentation with interactive first-run
   /doc-components    Hybrid component stack documentation (LWC → Apex → Flow)
   /platform-review   Multi-persona platform review (7 personas)
   /tooling-review    SF CLI + MCP Server release tracking
+  /claude-review     Claude Code + plugin release tracking
   /design-review     Design document accuracy review against org and standards
 
 Process (5):
@@ -59,7 +60,7 @@ Check each group directory (`commands/devops/`, `commands/documentation/`, `comm
 
 1. Determine which group the skill belongs to:
    - `deploy-changed`, `devops-commit`, `detect-drift`, `validate-build`, `package-audit`, `test-flows`, `wi-sync` → `commands/devops/`
-   - `release-review`, `doc-flows`, `doc-components`, `platform-review`, `tooling-review`, `design-review` → `commands/documentation/`
+   - `release-review`, `doc-flows`, `doc-components`, `platform-review`, `tooling-review`, `claude-review`, `design-review` → `commands/documentation/`
    - `backlog`, `start-day`, `wrap-up`, `skill-preflight`, `lookback` → `commands/process/`
    - `setup`, `help` → `commands/`
 
@@ -224,6 +225,7 @@ REVIEW:
   /platform-review          → quarterly multi-persona review
   /release-review           → Salesforce release analysis
   /tooling-review           → SF CLI + MCP updates
+  /claude-review            → Claude Code + plugin updates
 
 SESSION END:
   /wrap-up                  → commit, staleness check, memory, lookback

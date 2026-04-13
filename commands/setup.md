@@ -25,6 +25,7 @@ If the script is not found, fall back to inline checks:
 4. Check for `.env` with `SF_USER_ID`
 5. Check required directories exist
 6. Check for `docs/platform-brief.md`, `CLAUDE.md`, `README.md`
+7. Check for `reviewAssignments` key in `config/sf-toolkit.json` — if missing, surface suggestion: "Review assignments not configured — re-run `/setup` to assign review responsibilities."
 
 Report results as pass/warn/fail table, then stop.
 
@@ -94,9 +95,22 @@ Write the file:
   },
   "cache": {
     "ttlHours": 24
+  },
+  "reviewAssignments": {
+    "claude-review": "{name or null}",
+    "tooling-review": "{name or null}",
+    "platform-review": "{name or null}"
   }
 }
 ```
+
+4. **Review assignments:** After the team mapping is complete, ask who should be responsible for each cadence-based review skill. Present the three review types:
+   - `claude-review` — Claude Code + plugin release tracking (weekly cadence)
+   - `tooling-review` — SF CLI + MCP Server release tracking (weekly cadence)
+   - `platform-review` — Multi-persona platform review (quarterly cadence)
+
+   For single-developer teams (only one entry in `team`): default all three to that person.
+   For multi-developer teams: ask which team member should own each review type. Values are display names from the `team` config. Use `null` for "everyone sees the reminder" (no assignment).
 
 The `cache.ttlHours` controls how long the resolver cache (`.claude/sf-toolkit-cache.json`) is valid before skills re-dispatch the resolver agent. Default is 24 hours. Set lower for rapidly-changing environments, or higher for stable orgs.
 

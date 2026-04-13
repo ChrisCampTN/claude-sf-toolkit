@@ -372,7 +372,11 @@ Criteria for good prompt starters:
 
 ### Lookback Cadence Check
 
-After presenting the session plan options, check if lookback is due by scanning git log for feedback memory commits in the last 7 days:
+After presenting the session plan options, check if lookback is due.
+
+**Note:** Lookback does not have a review assignment — it applies to all team members because feedback memory is a shared resource. No assignment filtering for this check.
+
+Check by scanning git log for feedback memory commits in the last 7 days:
 
 ```bash
 git log --oneline --since="7 days ago" -- '.claude/memory/feedback_*.md'
@@ -394,6 +398,8 @@ Run: `/lookback` (or `/lookback --workstream {topic}` to focus)
 If the check cannot be determined (e.g., git log unavailable), skip silently.
 
 ### Platform Review Cadence Check
+
+Read `config/sf-toolkit.json` → `reviewAssignments.platform-review`. If the key exists and its value does not match `currentUserName`, skip this check silently. If the key is missing or null, proceed (backward compatible — everyone sees the reminder).
 
 Check when `/platform-review` was last run by looking for the most recent `docs/platform-review/*/` directory:
 
@@ -418,6 +424,8 @@ If the last review is within 80 days, skip silently.
 
 ### Tooling Review Cadence Check
 
+Read `config/sf-toolkit.json` → `reviewAssignments.tooling-review`. If the key exists and its value does not match `currentUserName`, skip this check silently. If the key is missing or null, proceed (backward compatible — everyone sees the reminder).
+
 Check `docs/tooling-reviews/` for the Last Reviewed date. Remind if >7 days:
 
 ```bash
@@ -432,6 +440,29 @@ Extract the date from the "Last Reviewed:" line. If the file doesn't exist or th
 SF CLI and MCP server releases ship weekly — check for new capabilities and adoption opportunities.
 
 Run: `/tooling-review` (weekly check) or `/tooling-review --audit` (full capability audit)
+---
+```
+
+If the last review is within 7 days, skip silently.
+
+### Claude Review Cadence Check
+
+Read `config/sf-toolkit.json` → `reviewAssignments.claude-review`. If the key exists and its value does not match `currentUserName`, skip this check silently. If the key is missing or null, proceed (backward compatible — everyone sees the reminder).
+
+Check `docs/tooling-reviews/claude-code.md` for the Last Reviewed date. Remind if >7 days:
+
+```bash
+head -5 docs/tooling-reviews/claude-code.md 2>/dev/null | grep "Last Reviewed:"
+```
+
+Extract the date from the "Last Reviewed:" line. If the file doesn't exist or the date is more than 7 days ago, surface the reminder:
+
+```text
+---
+**Claude review reminder:** It's been more than 7 days since `/claude-review` was last run{or "No Claude Code review baseline exists yet — run /claude-review to establish baseline"}.
+Claude Code and plugin releases ship frequently — check for new capabilities.
+
+Run: `/claude-review` (weekly check) or `/claude-review --audit` (capability audit)
 ---
 ```
 
