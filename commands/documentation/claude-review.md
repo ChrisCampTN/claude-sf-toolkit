@@ -342,3 +342,74 @@ If no features warrant backlog items, report:
 ```text
 No new backlog items proposed — all changes are informational or already covered by existing items.
 ```
+
+---
+
+## Audit Mode (`--audit`)
+
+Full capability review of Claude Code features and installed plugins against current usage.
+
+### Step A1 — Claude Code Capability Scan
+
+Enumerate current Claude Code capabilities:
+
+- `claude --help` for available top-level commands
+- `claude plugin list` for installed plugins and their versions
+- `.claude/settings.json` for configured hooks and permission rules
+- `.mcp.json` for configured MCP servers
+- Available deferred tools from the system context (enumerate `mcp__*` tools)
+
+Organize findings by area: hooks, agents, skills, MCP, plugins, permissions.
+
+### Step A2 — Cross-Reference with Documentation
+
+Compare the capability scan against:
+
+- Rolling report's "Capabilities We Use" — what's documented vs what's actually configured
+- Rolling report's "Adoption Opportunities" — what was identified but not yet adopted
+- Report any discrepancies: capabilities in use but not documented, or documented but no longer in use
+
+### Step A3 — Reference Automation Recommender
+
+For broader ecosystem discovery (new plugins, MCP servers, hooks the project doesn't know about), explicitly suggest:
+
+```text
+For a broader Claude Code ecosystem scan (new plugins, MCP servers, and automations),
+run the `claude-automation-recommender` skill from the claude-code-setup plugin.
+```
+
+Do not duplicate the automation recommender's work. The audit focuses on what you already have vs what you're using.
+
+### Step A4 — Update Rolling Report
+
+Add audit findings to the "Adoption Opportunities" table with `Status: Audit — {date}`.
+
+Add an audit subsection to "Recent Changes":
+
+```markdown
+### {date} — Capability Audit
+
+**Capabilities scanned:** {count}
+**In use:** {count}
+**New opportunities identified:** {count}
+**Key findings:**
+
+- {finding 1}
+- {finding 2}
+```
+
+Update "Capabilities We Use" if the audit reveals usage not yet documented.
+
+### Step A5 — Propose Backlog Items
+
+Run the same propose-then-approve workflow as Step 5 (Weekly Review) for significant audit findings.
+
+### Step A6 — Report
+
+```text
+### Capability Audit Complete
+
+**Claude Code:** {version}
+**Plugins scanned:** {n} ({n} capabilities, {n} in use, {n} opportunities)
+**Backlog items:** {n} proposed, {m} approved
+```
