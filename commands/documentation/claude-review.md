@@ -413,3 +413,87 @@ Run the same propose-then-approve workflow as Step 5 (Weekly Review) for signifi
 **Plugins scanned:** {n} ({n} capabilities, {n} in use, {n} opportunities)
 **Backlog items:** {n} proposed, {m} approved
 ```
+
+---
+
+## Context Lookup Mode (`--context <area>`)
+
+On-demand domain-specific capability scan. Does NOT update rolling files.
+
+### Step C1 — Map Area to Tag
+
+Map the provided `<area>` argument to a capability domain:
+
+| Input | Tag | What it scans |
+|---|---|---|
+| hooks, hook | hooks | Hook event types, settings.json patterns, PreToolUse/PostToolUse/Stop/SessionStart/SessionStop |
+| agents, agent, subagent | agents | Agent frontmatter, dispatch, parallel, isolation, worktrees |
+| skills, commands, slash | skills | Skill/command capabilities, arguments, frontmatter, `${CLAUDE_PLUGIN_ROOT}` |
+| mcp, tools, servers | mcp | MCP protocol, tool types, resources, server configuration |
+| sdk, api, anthropic | sdk | Anthropic SDK, model capabilities, API features |
+| plugins, marketplace | plugins | Plugin system, marketplace, install flow, versioning, settings |
+| plan, planning | plan | Plan mode features, worktrees, approval workflow |
+| permissions, security | permissions | Permission model, settings.json, allow/deny rules |
+
+If the area doesn't match any tag, report:
+
+```text
+Area "{area}" not recognized. Available areas: hooks, agents, skills, mcp, sdk, plugins, plan, permissions
+```
+
+And stop.
+
+### Step C2 — Scan Current Capabilities
+
+For the matched tag, scan what's currently configured/in use:
+
+- **hooks:** Read `.claude/settings.json` for hook entries, check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` for plugin hooks
+- **agents:** Read `.claude/agents/*.md` for project agents, `${CLAUDE_PLUGIN_ROOT}/agents/*.md` for plugin agents
+- **skills:** Read `.claude/skills/**` for project skills, enumerate `${CLAUDE_PLUGIN_ROOT}/commands/**/*.md` for plugin skills
+- **mcp:** Read `.mcp.json` for configured MCP servers, enumerate available `mcp__*` deferred tools
+- **plugins:** Run `claude plugin list`, read `.claude-plugin/plugin.json` if in plugin mode
+- **permissions:** Read `.claude/settings.json` for allow/deny rules
+- **sdk/plan:** Check rolling report and backlog for related entries
+
+### Step C3 — Scan Rolling Report
+
+Read `docs/tooling-reviews/claude-code.md` and filter for entries related to this area:
+
+- Adoption Opportunities tagged with this area
+- Recent Changes entries mentioning this area
+- Capabilities We Use entries for this area
+
+### Step C4 — Cross-Reference Backlog
+
+For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
+
+```bash
+node scripts/backlog-search.js --text "{area}"
+```
+
+List active backlog items related to this area.
+
+### Step C5 — Report
+
+Report to console (do NOT update rolling files):
+
+```text
+### {Area} — Context Lookup
+
+**Current Configuration:**
+- {what's configured for this area}
+- ...
+
+**In Rolling Report:**
+- {relevant entries from claude-code.md, or "No entries for {area}"}
+
+**Related Backlog Items:**
+- BL-NNNN: {title} ({status})
+- ... (or "None")
+
+**Recommendation:** {contextual recommendation — what to adopt, evaluate, or watch for this area}
+```
+
+### Step C6 — Optional Backlog Proposals
+
+If the context lookup reveals significant adoption opportunities not already in the backlog, offer to propose backlog items using the same propose-then-approve workflow as Step 5.
