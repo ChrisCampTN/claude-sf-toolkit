@@ -28,6 +28,7 @@
 - Read files before editing (Edit tool requires prior Read even if you've grepped the content)
 - Use `replace_all: true` for renaming patterns across files (paths, common text blocks)
 - 18 skill files share the same Resolution section — grep to verify all were updated, zero old matches remain
+- Skills without SF org context (help, setup, claude-review) must be added to `EXCLUDED_COMMANDS` in `scripts/validate-plugin.js` to skip the Cache-first resolution check
 - Windows CRLF: when parsing markdown frontmatter with regex, always `.replace(/\r\n/g, "\n")` first
 - When batch-editing shared sections, preserve skill-specific content above/below — only touch the targeted pattern
 - After any multi-file change, run `node scripts/validate-plugin.js` before claiming done — zero failures required
@@ -59,3 +60,7 @@ After significant changes, run the plugin-dev skills for best-practice validatio
 - Direct URL install (`claude plugin install https://...`) does NOT work
 - Users must re-run the combined command to get updates (no auto-update)
 - Session-start hook notifies users when the plugin version changes
+
+## Worktree workflow
+- `gh pr merge --delete-branch` fails from a feature worktree when the parent worktree has `main` checked out — the GitHub merge still succeeds; manually `git pull` in the parent, then `git branch -D <feature>` and `git worktree remove <path>`
+- Squash-merging a PR whose feature branch descends from an unpushed local main commit creates a redundant merge commit on pull — `git reset --hard origin/main` is safe to drop it since the content is already in the squash
