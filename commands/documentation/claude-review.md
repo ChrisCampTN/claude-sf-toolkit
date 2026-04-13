@@ -261,3 +261,84 @@ Operations:
 3. Add version subsection to Recent Changes
 4. Move adopted items to Completed (if any were adopted since last review)
 5. Update Capabilities We Use if review reveals new usage
+
+---
+
+### Step 5 — Propose Backlog Items
+
+Same propose-then-approve pattern as `/tooling-review` and `/release-review`.
+
+For each **Adopt Now** and **Evaluate** feature from Step 3:
+
+1. **Check for existing backlog overlap:**
+
+   For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
+
+   ```bash
+   node scripts/backlog-search.js --text "{feature keywords}"
+   ```
+
+   If an existing item covers this feature, note it as an expansion candidate rather than a new item.
+
+2. **Draft backlog entries** for new items:
+
+   ```yaml
+   title: "{action verb} {feature name}"
+   description: "{what to do and why, referencing the claude review}"
+   category: "{matching category}"
+   priority: null
+   effort: "{S|M|L|XL estimate}"
+   complexity: "{Low|Med|High}"
+   tags: ["{relevant tags}"]
+   source: "claude-review"
+   submitted_by: "Claude"
+   notes:
+     - date: "{today}"
+       author: "Claude"
+       text: "Identified in Claude review (Claude Code {version}). See docs/tooling-reviews/claude-code.md"
+   ```
+
+3. **Present proposals for approval:**
+
+   ```text
+   ### Proposed Backlog Items ({n} new, {m} expansions)
+
+   **New Items:**
+
+   1. **{title}** — {one-line summary}
+      Effort: {S/M/L/XL} | Tags: {tags}
+
+   2. ...
+
+   **Expand Existing:**
+
+   1. **BL-NNNN: {existing title}** — add: {what to add from this review}
+
+   Approve all / approve 1,3 / skip 2 / edit 1: {text} / none
+   ```
+
+   **Wait for developer approval before writing any backlog items.**
+
+4. **Write approved items:**
+
+   For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
+
+   ```bash
+   node scripts/backlog-add.js --title "{title}" --description "{desc}" --category "{cat}" --effort "{effort}" --complexity "{complexity}" --tags "{tags}" --source "claude-review" --submitted-by "Claude"
+   ```
+
+5. **Re-render backlog:**
+
+   For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
+
+   ```bash
+   node scripts/backlog-render.js
+   ```
+
+6. **Update report** — add "Backlog proposed: BL-NNNN" line to the version's Recent Changes entry.
+
+If no features warrant backlog items, report:
+
+```text
+No new backlog items proposed — all changes are informational or already covered by existing items.
+```
