@@ -372,7 +372,11 @@ Criteria for good prompt starters:
 
 ### Lookback Cadence Check
 
-After presenting the session plan options, check if lookback is due by scanning git log for feedback memory commits in the last 7 days:
+After presenting the session plan options, check if lookback is due.
+
+**Note:** Lookback does not have a review assignment — it applies to all team members because feedback memory is a shared resource. No assignment filtering for this check.
+
+Check by scanning git log for feedback memory commits in the last 7 days:
 
 ```bash
 git log --oneline --since="7 days ago" -- '.claude/memory/feedback_*.md'
@@ -394,6 +398,8 @@ Run: `/lookback` (or `/lookback --workstream {topic}` to focus)
 If the check cannot be determined (e.g., git log unavailable), skip silently.
 
 ### Platform Review Cadence Check
+
+Read `config/sf-toolkit.json` → `reviewAssignments.platform-review`. If the key exists and its value does not match `currentUserName`, skip this check silently. If the key is missing or null, proceed (backward compatible — everyone sees the reminder).
 
 Check when `/platform-review` was last run by looking for the most recent `docs/platform-review/*/` directory:
 
@@ -417,6 +423,8 @@ If the last review is within 80 days, skip silently.
 ---
 
 ### Tooling Review Cadence Check
+
+Read `config/sf-toolkit.json` → `reviewAssignments.tooling-review`. If the key exists and its value does not match `currentUserName`, skip this check silently. If the key is missing or null, proceed (backward compatible — everyone sees the reminder).
 
 Check `docs/tooling-reviews/` for the Last Reviewed date. Remind if >7 days:
 
