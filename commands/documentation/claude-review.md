@@ -497,3 +497,46 @@ Report to console (do NOT update rolling files):
 ### Step C6 — Optional Backlog Proposals
 
 If the context lookup reveals significant adoption opportunities not already in the backlog, offer to propose backlog items using the same propose-then-approve workflow as Step 5.
+
+---
+
+## Backlog-Only Mode (`--backlog-only`)
+
+Process existing rolling report into backlog items without re-running analysis.
+
+### Step B1 — Read Report
+
+Read `docs/tooling-reviews/claude-code.md`.
+
+### Step B2 — Extract Opportunities
+
+Parse the "Adoption Opportunities" table. Extract entries classified as **Adopt Now** or **Evaluate** that have not already been processed into backlog items.
+
+Check for processing markers — if a "Backlog proposed" line in Recent Changes already references a version's findings, skip those entries.
+
+### Step B3 — Run Backlog Proposal Workflow
+
+Run the same propose-then-approve workflow as Step 5 (Weekly Review) for all extracted opportunities.
+
+### Step B4 — Mark Processed
+
+After processing, add a note to the relevant Recent Changes entry in the report:
+
+```markdown
+**Backlog processed:** {today's date} — {n} items proposed, {m} approved
+```
+
+---
+
+## Behavior Notes
+
+- **Project context is the default relevance filter.** The skill runs in consuming projects by default. Use `--plugin` when developing the plugin itself.
+- **No Resolution section.** This skill does not need SF org context. It reads Claude Code and project configuration directly. This is the first skill without the shared Resolution block.
+- **Rolling files, not per-run files.** Update `docs/tooling-reviews/claude-code.md` in place. Git history preserves per-run snapshots. Never create new report files per run.
+- **Version state lives in report headers.** "Claude Code Version", "Plugin Versions", and "Last Reviewed" in the header are the single source of truth. Do not duplicate this in memory files.
+- **Propose-then-approve for backlog items.** Same pattern as `/tooling-review`, `/release-review`, and `/platform-review` — Claude proposes, developer approves before writing. Never auto-write backlog items.
+- **Graceful degradation.** If web search fails, if `claude --version` output format changes, if plugin list output is unparseable — skip what's broken, complete what you can, report what was skipped.
+- **Installed-plugin tracking, not new-plugin discovery.** This skill tracks changes in tools you already use. For discovering new plugins/automations, it defers to `claude-automation-recommender`.
+- **First run creates baseline.** If the rolling report doesn't exist, first run creates it with current versions and documents current capabilities. No delta analysis on first run.
+- **Source attribution.** All backlog items use `source: "claude-review"` for traceability. Notes reference `docs/tooling-reviews/claude-code.md`.
+- **Weekly reminder.** `/start-day` includes a claude review reminder when 7+ days have elapsed since last review. The reminder checks "Last Reviewed" in the report header, not a memory file.
