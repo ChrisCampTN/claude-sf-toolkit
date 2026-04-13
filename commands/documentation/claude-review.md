@@ -126,3 +126,33 @@ If either changed, report which have updates and continue:
 
 Proceeding with review for updated tool(s).
 ```
+
+---
+
+### Step 1 — Fetch Release Notes
+
+Only fetch notes for tools that have new versions (from Step 0).
+
+**Claude Code (if CC_CHANGED):**
+
+1. Primary: WebSearch for `"claude code" release {CC_CURRENT} site:github.com/anthropics`
+   Then WebFetch the most relevant result (releases page or changelog).
+
+2. Secondary: Check npm package metadata:
+   ```bash
+   npm view @anthropic-ai/claude-code --json 2>/dev/null
+   ```
+
+3. Tertiary: WebSearch for `"claude code" {CC_CURRENT} changelog site:docs.anthropic.com OR site:anthropic.com`
+
+4. Graceful degradation: if all sources fail, note what was skipped and proceed with version-only tracking.
+
+**Installed plugins (if PLUGINS_CHANGED):**
+
+For each changed plugin, check its GitHub repo for release notes:
+
+1. WebSearch for `"{plugin-name}" claude code plugin release {version} site:github.com`
+2. If the plugin list output includes a source URL, WebFetch that URL's releases page.
+3. If no release notes are found, note: "Release notes unavailable for {plugin-name} {version}"
+
+Collect all NEW/CHANGE/FIX/DEPRECATION entries from each source.
