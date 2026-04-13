@@ -531,7 +531,7 @@ After processing, add a note to the relevant Recent Changes entry in the report:
 ## Behavior Notes
 
 - **Project context is the default relevance filter.** The skill runs in consuming projects by default. Use `--plugin` when developing the plugin itself.
-- **No Resolution section.** This skill does not need SF org context. It reads Claude Code and project configuration directly. This is the first skill without the shared Resolution block.
+- **No Resolution section.** This skill does not need SF org context. It reads Claude Code and project configuration directly. This is the first skill without the shared Resolution block — registered in the `EXCLUDED_COMMANDS` list in the plugin validator to skip the Cache-first resolution check.
 - **Rolling files, not per-run files.** Update `docs/tooling-reviews/claude-code.md` in place. Git history preserves per-run snapshots. Never create new report files per run.
 - **Version state lives in report headers.** "Claude Code Version", "Plugin Versions", and "Last Reviewed" in the header are the single source of truth. Do not duplicate this in memory files.
 - **Propose-then-approve for backlog items.** Same pattern as `/tooling-review`, `/release-review`, and `/platform-review` — Claude proposes, developer approves before writing. Never auto-write backlog items.
