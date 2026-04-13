@@ -186,3 +186,48 @@ Read the plugin's own architecture:
 - `${CLAUDE_PLUGIN_ROOT}/commands/**/*.md` frontmatter — skill patterns (`$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}`)
 
 Produce a "plugin capabilities" inventory: which hook event types, which agent dispatch patterns, which skill frontmatter features, which `${CLAUDE_PLUGIN_ROOT}` resolution patterns the plugin uses.
+
+---
+
+### Step 3 — Filter and Classify
+
+For each release note entry from Step 1, match against the relevance context from Step 2:
+
+| Match Type | Meaning |
+|---|---|
+| Architecture match | Feature affects a component type in use (hooks, agents, skills, plugins) |
+| Dependency match | Feature affects something scripts or templates depend on |
+| Workflow match | Feature could improve an existing skill or workflow |
+| Ecosystem match | Feature changes plugin distribution, install, or configuration |
+
+**Skip** entries with no project/plugin relevance.
+
+**Classify** relevant entries:
+
+- **Adopt Now** — directly useful, can leverage immediately
+- **Evaluate** — potentially useful, needs investigation
+- **Watch** — not actionable yet but relevant to roadmap
+- **Informational** — good to know, no action needed
+
+For installed plugin changes, additional filter: only surface changes related to features the project actually invokes. Grep for skill invocations, agent references, and hook patterns in project files to determine actual usage.
+
+For each relevant entry, capture:
+
+```yaml
+feature: { feature name }
+area: { matching relevance context area }
+classification: { Adopt Now | Evaluate | Watch | Informational }
+summary: { 2-3 sentence description }
+impact: { 1-2 sentences on specific project/plugin impact }
+action: { what to do, if anything }
+```
+
+Report the classification summary:
+
+```text
+### Classification Summary
+
+**Total entries reviewed:** {n}
+**Project-relevant:** {count} (Adopt Now: {n}, Evaluate: {n}, Watch: {n}, Informational: {n})
+**Skipped (not relevant):** {count}
+```
