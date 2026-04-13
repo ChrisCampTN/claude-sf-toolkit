@@ -445,6 +445,29 @@ Run: `/tooling-review` (weekly check) or `/tooling-review --audit` (full capabil
 
 If the last review is within 7 days, skip silently.
 
+### Claude Review Cadence Check
+
+Read `config/sf-toolkit.json` → `reviewAssignments.claude-review`. If the key exists and its value does not match `currentUserName`, skip this check silently. If the key is missing or null, proceed (backward compatible — everyone sees the reminder).
+
+Check `docs/tooling-reviews/claude-code.md` for the Last Reviewed date. Remind if >7 days:
+
+```bash
+head -5 docs/tooling-reviews/claude-code.md 2>/dev/null | grep "Last Reviewed:"
+```
+
+Extract the date from the "Last Reviewed:" line. If the file doesn't exist or the date is more than 7 days ago, surface the reminder:
+
+```text
+---
+**Claude review reminder:** It's been more than 7 days since `/claude-review` was last run{or "No Claude Code review baseline exists yet — run /claude-review to establish baseline"}.
+Claude Code and plugin releases ship frequently — check for new capabilities.
+
+Run: `/claude-review` (weekly check) or `/claude-review --audit` (capability audit)
+---
+```
+
+If the last review is within 7 days, skip silently.
+
 ---
 
 ## Behavior Notes
