@@ -231,3 +231,33 @@ Report the classification summary:
 **Project-relevant:** {count} (Adopt Now: {n}, Evaluate: {n}, Watch: {n}, Informational: {n})
 **Skipped (not relevant):** {count}
 ```
+
+---
+
+### Step 4 — Update Rolling Report
+
+Update `docs/tooling-reviews/claude-code.md`.
+
+**Report header:**
+
+```markdown
+**Claude Code Version:** {version}
+**Plugin Versions:** superpowers {v}, commit-commands {v}, context7 {v}, skill-creator {v}
+**Last Reviewed:** {date}
+**Baseline Established:** {date}
+```
+
+**Report sections** (same structure as sf-cli.md):
+
+1. **Adoption Opportunities** — table with columns: `Feature | Area | Why Consider | Classification | Status`
+2. **Recent Changes** — version subsections with NEW/CHANGE/FIX lists (keep last 4 reviews; older in git history)
+3. **Capabilities We Use** — documented usage of Claude Code features
+4. **Completed** — previously adopted features
+5. **Not Relevant** — explicitly excluded features
+
+Operations:
+1. Update header with current versions and date
+2. Add new Adopt Now / Evaluate items to Adoption Opportunities with `Status: New — {version}`
+3. Add version subsection to Recent Changes
+4. Move adopted items to Completed (if any were adopted since last review)
+5. Update Capabilities We Use if review reveals new usage
