@@ -187,7 +187,7 @@ for (const file of allCommands) {
 console.log("\n5. Cache-first resolution pattern");
 
 const RESOLUTION_MARKER = "Cache-first resolution";
-const EXCLUDED_COMMANDS = ["help.md", "setup.md"]; // These don't use resolver
+const EXCLUDED_COMMANDS = ["help.md", "setup.md", "claude-review.md"]; // These don't use resolver
 
 for (const file of allCommands) {
   const basename = path.basename(file);
