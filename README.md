@@ -71,7 +71,7 @@ Run `/setup --check` anytime for a project health report.
 | `/test-flows` | Native FlowTest metadata generator for record-triggered flows | `--target-org` |
 | `/wi-sync` | Sync DevOps Center WI status against MEMORY.md | `--dry-run` |
 
-### Documentation (6)
+### Documentation (7)
 
 | Skill | Description | Key Parameters |
 |-------|-------------|----------------|
@@ -80,6 +80,7 @@ Run `/setup --check` anytime for a project health report.
 | `/doc-components` | Hybrid component stack documentation (LWC → Apex → Flow) | — |
 | `/platform-review` | Multi-persona platform review (7 personas) | `--target-org` |
 | `/tooling-review` | SF CLI + MCP Server release tracking | — |
+| `/claude-review` | Claude Code + plugin release tracking | `--audit`, `--context <area>`, `--plugin` |
 | `/design-review` | Design document accuracy review against org metadata and standards | doc path or `BL-NNNN` |
 
 ### Process (5)
