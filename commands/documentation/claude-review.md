@@ -156,3 +156,33 @@ For each changed plugin, check its GitHub repo for release notes:
 3. If no release notes are found, note: "Release notes unavailable for {plugin-name} {version}"
 
 Collect all NEW/CHANGE/FIX/DEPRECATION entries from each source.
+
+---
+
+### Step 2 — Build Relevance Context
+
+The relevance context determines how release note entries are filtered and classified. The `--plugin` modifier switches which context is used.
+
+**Default mode (project context):**
+
+Read the consuming project's Claude Code configuration:
+
+- `.claude/settings.json` — hooks configured, permission rules
+- `CLAUDE.md` — project instructions, patterns, constraints
+- `.mcp.json` — MCP servers configured
+- `.claude/agents/*.md` — project-level agents (if any)
+- `.claude/skills/**` — project-level skills (if any)
+
+Produce a "capabilities in use" inventory: which hook events, which MCP servers, which agent patterns, which skill features the project actively uses.
+
+**`--plugin` mode (plugin architecture context):**
+
+Read the plugin's own architecture:
+
+- `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` — registered hooks, agents, skills
+- `${CLAUDE_PLUGIN_ROOT}/CLAUDE.md` — key patterns, conventions
+- `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` — hook event types in use
+- `${CLAUDE_PLUGIN_ROOT}/agents/*.md` frontmatter — agent features (model, tools, color)
+- `${CLAUDE_PLUGIN_ROOT}/commands/**/*.md` frontmatter — skill patterns (`$ARGUMENTS`, `${CLAUDE_PLUGIN_ROOT}`)
+
+Produce a "plugin capabilities" inventory: which hook event types, which agent dispatch patterns, which skill frontmatter features, which `${CLAUDE_PLUGIN_ROOT}` resolution patterns the plugin uses.
