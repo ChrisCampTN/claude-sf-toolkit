@@ -19,6 +19,7 @@ Arguments can be:
 - `WI-NNNNNN --cherry-pick abc1234 def5678` — recovery: multiple commit SHAs (cherry-picked in order)
 - `WI-NNNNNN --cherry-pick HEAD~3..HEAD` — recovery: commit range
 - `--target-org {alias}` — override the deploy target org. Defaults to the user's SF CLI default org (`sf config get target-org`). Only affects the Step 7 deploy; WI queries always target `{context.orgs.productionAlias}`.
+- `--skip-validation` — bypass the `/validate-build` gate before promotion (DOC mode) or PR creation guidance (GHA mode)
 - Empty — list uncommitted metadata changes and open work items, then ask the user to pick
 
 ---
@@ -49,10 +50,21 @@ If the resolved context contains `workTracking.disabledSkills` and it includes `
 > git add <files>
 > git commit -m "feat: description (Fixes #NN)"
 > git push
+> ```
+>
+> Before opening a PR, run `/validate-build` to verify the build against the design spec:
+>
+> ```
+> /validate-build #{NN}
+> ```
+>
+> Then create the PR:
+>
+> ```
 > gh pr create --title "feat: description" --body "Fixes #NN"
 > ```
 >
-> GitHub Actions handles validation on PR open and deployment on merge to main.
+> GitHub Actions handles CI validation on PR open and deployment on merge to main.
 
 Stop here — do not proceed to the workflow steps below.
 
@@ -402,7 +414,33 @@ Deployed to {target-org}: {Yes / No / Partial}
 Current branch: {original branch}
 ```
 
-### 8A — Offer MCP-Driven Promotion (optional)
+### 8A — Validation Gate
+
+Before offering promotion, check whether `/validate-build` has been completed for this work item:
+
+1. Look for a `.validation-session.json` in the project root. If it exists, check if it references the current WI number and has a `status` of `"complete"` with no `FAIL` verdicts.
+2. Alternatively, check the backlog item's notes (via `devops_wis` mapping) for a "validate-build: PASS" entry.
+
+**If validation has NOT been completed:**
+
+```text
+**Validation recommended before promotion.**
+
+/validate-build has not been run for {WI-NNNNNN}.
+
+Options:
+1. **Run validation now** — invoke `/validate-build {WI-NNNNNN}` before promoting
+2. **Skip validation** — proceed to promotion without validation (--skip-validation)
+3. **Skip promotion** — promote manually later after validation
+```
+
+If the user chooses option 1, invoke `/validate-build` with the WI number. After it completes, return to the promotion offer below.
+
+If the user chooses option 2 (or if the original `/devops-commit` invocation included `--skip-validation`), proceed directly to promotion.
+
+**If validation IS complete (or skipped):**
+
+### 8B — Offer MCP-Driven Promotion (optional)
 
 After a successful commit + push + deploy, offer to start the promotion pipeline via MCP instead of requiring the user to open the DevOps Center UI:
 
