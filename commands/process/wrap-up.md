@@ -255,11 +255,13 @@ sf project deploy start --target-org {context.orgs.devAlias} --source-dir {paths
 
 ---
 
-## Step 5 — WI Status Sync
+## Step 5 — Work Item / Issue Status Check
+
+If `skipWiSync` is set, report `[SKIP] Status check skipped (--skip-wi-sync).` and move to Step 6.
+
+**If `workTracking.backend` == `"devops-center"`:**
 
 Run `/wi-sync` (full sync — updates MEMORY.md) to reconcile live DevOps Center status against the WI tables in MEMORY.md. The sync queries `{context.orgs.productionAlias}` for current WI status.
-
-If `skipWiSync` is set, report `[SKIP] WI sync skipped (--skip-wi-sync).` and move to Step 6.
 
 If the org query fails (unreachable, auth expired), log the failure and continue — do not block the wrap-up.
 
@@ -274,6 +276,26 @@ Report the sync result inline:
 ```
 
 If zero changes: `[OK] MEMORY.md WI tables are current.`
+
+**If `workTracking.backend` == `"github-actions"`:**
+
+Query current Issue status directly (no sync needed — Issues are always live):
+
+Run: `{workTracking.listActiveCmd}` (substituting `{issueRepo}` with `workTracking.issueRepo`)
+
+Parse the JSON output and report:
+
+```text
+### Active Issues
+
+| # | Title | Status | Assignee |
+|---|-------|--------|----------|
+| {number} | {title} | {state + status label} | {assignee} |
+
+{n} open issues assigned to you.
+```
+
+If the `gh` command fails (auth expired, no network), log the failure and continue.
 
 ---
 
