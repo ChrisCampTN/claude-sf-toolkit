@@ -45,7 +45,21 @@ Read from three sources and merge:
 
 **Source 3 — DevOps Center (if not quickMode):** Query live WI status. Use the Salesforce DX MCP tool `mcp__Salesforce-DX__list_devops_center_work_items` targeting **{{productionOrgAlias}}** (WorkItem only exists in production, not sandboxes).
 
-If {{quickMode}} is "true", skip the DevOps Center query and report: `[SKIP] WI freshness check skipped (--quick).`
+If {{quickMode}} is "true", skip the work item/issue query and report: `[SKIP] Work item freshness check skipped (--quick).`
+
+**If `workTracking.backend` == `"devops-center"`:**
+Query DevOps Center work items using `mcp__Salesforce-DX__list_devops_center_work_items` as described below.
+
+**If `workTracking.backend` == `"github-actions"`:**
+Query GitHub Issues instead:
+
+Run: `gh issue list --repo {workTracking.issueRepo} --state open --json number,title,state,labels,assignees --limit 50`
+
+Parse the JSON output:
+- For each issue, extract status from labels matching `status:*` (e.g., `status:in-progress`). If no status label, use the issue state (`open` → "Not Started").
+- Extract assignee from the `assignees` array.
+- Match issues to backlog items by checking if the issue title or number appears in MEMORY.md or backlog context.
+- Classify as "Your Active Work" (assigned to `{{currentUserName}}`), "Team Active Work" (assigned to others), or "Unassigned."
 
 If the MCP query fails (server not connected, auth expired), log the failure and continue with Sources 1+2 only: `[SKIP] WI freshness check — MCP unavailable: {error}`
 
@@ -88,10 +102,13 @@ Return findings in this exact structure:
 
 #### Your Active Work ({n} items)
 
-| BL | WI | Title | Status | Type | Notes |
+| BL | Ref | Title | Status | Type | Notes |
 |----|----|----|--------|------|-------|
 | BL-NNNN | WI-NNNNNN | {title} | In Progress | WI | {brief context} |
+| BL-NNNN | #NN | {title} | In Progress | Issue | {brief context} |
 | BL-NNNN | — | {title} | In Progress | Backlog-only | {brief context} |
+
+Use WI-NNNNNN format for DOC mode, #NN format for GHA mode. The Ref column adapts based on workTracking.idPrefix.
 
 #### Team Active Work ({n} items)
 
@@ -100,7 +117,7 @@ Return findings in this exact structure:
 
 #### Unassigned Active Work ({n} items)
 
-| BL | WI | Title | Status | Type | Priority |
+| BL | Ref | Title | Status | Type | Priority |
 |----|----|-------|--------|------|----------|
 | BL-NNNN | WI-NNNNNN | {title} | In Progress | WI | P2 |
 
@@ -109,8 +126,8 @@ Return findings in this exact structure:
 
 **Pending decisions:** {list or "None"}
 **Blocked items:** {list with blockers or "None"}
-**WI status drift:** {findings or "None (memory current)"}
-**Assignment drift:** {findings or "None — backlog and DevOps Center assignments match"}
+**Work item status drift:** {findings or "None (memory current)"}
+**Assignment drift:** {findings or "None — backlog and work tracking assignments match"}
 ```
 
 If {{currentSfUserId}} could not be resolved, skip assignment splitting: `[SKIP] Assignment filtering unavailable (.env missing SF_USER_ID).` Show all items in one flat table.
