@@ -6,6 +6,13 @@
     "backend": "yaml",
     "categories": []
   },
+  "devops": {
+    "backend": "devops-center",
+    "environments": {
+      "local": ["dev"],
+      "managed": []
+    }
+  },
   "cache": {
     "ttlHours": 24
   }
