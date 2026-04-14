@@ -79,7 +79,22 @@ If `config/sf-toolkit.json` doesn't exist, walk the developer through creating i
 
 2. **Search keywords:** Ask what keywords to use for `/release-review` and `/tooling-review` searches (e.g., "salesforce OR deploy OR sandbox OR production"). Explain these filter release notes and tooling updates.
 
-3. **Backlog backend:** Ask "yaml" (file-based, works immediately) or "salesforce" (custom object — requires additional setup). Default to yaml.
+3. **Backlog backend:** Ask "yaml" (file-based, works immediately) or "salesforce" (custom object — requires additional setup). Default to yaml. (This may be overridden by the DevOps backend choice below.)
+
+4. **DevOps backend:** Ask which DevOps backend this project uses:
+   - **SF DevOps Center** (default) — Work Items, DOC pipeline, SOQL-based tracking
+   - **GitHub Actions** — GitHub Issues for tracking, GHA workflows for CI/CD, PR-based promotion
+
+   If "GitHub Actions" is selected:
+   - Set `devops.backend` to `"github-actions"`
+   - Ask which environments are managed by GHA (default: `["staging", "production"]`)
+   - Ask which environments allow local deploys (default: `["dev"]`)
+   - Override `backlog.backend` to `"github-issues"` (inform the user: "Backlog will use GitHub Issues since you're using GitHub Actions for DevOps.")
+   
+   If "SF DevOps Center" is selected (or default):
+   - Set `devops.backend` to `"devops-center"`
+   - Set `devops.environments.managed` to `[]`
+   - Set `devops.environments.local` to `["dev", "staging", "production"]`
 
 Write the file:
 
@@ -93,6 +108,13 @@ Write the file:
   "backlog": {
     "backend": "{yaml|salesforce}"
   },
+  "devops": {
+    "backend": "{devops-center|github-actions}",
+    "environments": {
+      "local": ["{env aliases for local deploy}"],
+      "managed": ["{env aliases managed by GHA}"]
+    }
+  },
   "cache": {
     "ttlHours": 24
   },
@@ -104,7 +126,58 @@ Write the file:
 }
 ```
 
-4. **Review assignments:** After the team mapping is complete, ask who should be responsible for each cadence-based review skill. Present the three review types:
+5. **GitHub label bootstrapping** (GHA mode only):
+
+   If `devops.backend` is `"github-actions"`, create the label taxonomy in the GitHub repo. Derive the repo from `git remote get-url origin`.
+
+   Run these commands (idempotent — `gh label create` skips existing labels):
+
+   ```bash
+   # Priority
+   gh label create "P1" --description "Critical priority" --color "B60205" --force
+   gh label create "P2" --description "High priority" --color "D93F0B" --force
+   gh label create "P3" --description "Medium priority" --color "FBCA04" --force
+   gh label create "P4" --description "Low priority" --color "0E8A16" --force
+
+   # Effort
+   gh label create "effort:XS" --description "Extra small effort" --color "C5DEF5" --force
+   gh label create "effort:S" --description "Small effort" --color "C5DEF5" --force
+   gh label create "effort:M" --description "Medium effort" --color "C5DEF5" --force
+   gh label create "effort:L" --description "Large effort" --color "C5DEF5" --force
+   gh label create "effort:XL" --description "Extra large effort" --color "C5DEF5" --force
+
+   # Complexity
+   gh label create "complexity:low" --description "Low complexity" --color "D4C5F9" --force
+   gh label create "complexity:med" --description "Medium complexity" --color "D4C5F9" --force
+   gh label create "complexity:high" --description "High complexity" --color "D4C5F9" --force
+
+   # Status
+   gh label create "status:captured" --description "Backlog: captured" --color "E4E669" --force
+   gh label create "status:groomed" --description "Backlog: groomed/evaluated" --color "E4E669" --force
+   gh label create "status:prioritized" --description "Backlog: prioritized" --color "E4E669" --force
+   gh label create "status:in-progress" --description "Backlog: in progress" --color "1D76DB" --force
+   gh label create "status:deferred" --description "Backlog: deferred" --color "E4E669" --force
+
+   # Source
+   gh label create "source:team" --description "Team member submission" --color "BFD4F2" --force
+   gh label create "source:stakeholder" --description "Stakeholder request" --color "BFD4F2" --force
+   gh label create "source:vendor" --description "Vendor evaluation" --color "BFD4F2" --force
+   gh label create "source:claude" --description "Claude session submission" --color "BFD4F2" --force
+
+   # Dependencies
+   gh label create "blocked" --description "Blocked by another item" --color "B60205" --force
+   gh label create "archived" --description "Archived backlog item" --color "EEEEEE" --force
+   ```
+
+   For each category in `backlog.categories`:
+
+   ```bash
+   gh label create "cat:{category}" --description "Category: {category}" --color "006B75" --force
+   ```
+
+   Report: "Created {n} labels in {repo}. {n} already existed (skipped)."
+
+6. **Review assignments:** After the team mapping is complete, ask who should be responsible for each cadence-based review skill. Present the three review types:
    - `claude-review` — Claude Code + plugin release tracking (weekly cadence)
    - `tooling-review` — SF CLI + MCP Server release tracking (weekly cadence)
    - `platform-review` — Multi-persona platform review (quarterly cadence)
