@@ -20,6 +20,18 @@
 - All 18 skills share identical Resolution section — batch-edit with `replace_all` when changing it
 - Config-driven values: scripts read from `config/sf-toolkit.json`, fall back to extracting from data, never hardcode project-specific values (categories, team names, etc.)
 
+## DevOps Backend Toggle
+- `config/sf-toolkit.json` → `devops.backend`: `"devops-center"` (default) or `"github-actions"`
+- Projects without a `devops` key behave as `"devops-center"` with no changes
+- `workTracking` context in cache abstracts backend: skills read `workTracking.*` fields, not backend-specific commands
+- Resolver agent populates `workTracking` based on `devops.backend` — GHA mode skips DOC SOQL queries
+- `workTracking.disabledSkills`: skills listed here show "not available" message and stop (devops-commit, wi-sync in GHA mode)
+- `workTracking.deployManagedEnvs`: deploy-changed warns when targeting these environments
+- Backlog has variant workflow files: `commands/process/backlog-workflows/{devops-center,github-actions}.md`
+- Parent `backlog.md` routes to the correct variant based on `workTracking.backend` (or explicit `backlog.backend` override)
+- When editing a variant file, check the counterpart for matching changes to shared sub-commands
+- `/validate-build` gate: DOC promotions and GHA PRs should complete validate-build first (--skip-validation to bypass)
+
 ## Version Management
 - Three files must stay in sync: package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json
 - Bump all three together. Cache includes pluginVersion for auto-invalidation on updates
