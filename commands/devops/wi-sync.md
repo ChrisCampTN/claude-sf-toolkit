@@ -43,6 +43,19 @@ Use the returned context for all org references, team lookups, and path resoluti
 
 ---
 
+### Backend Check
+
+If the resolved context contains `workTracking.disabledSkills` and it includes `"wi-sync"`:
+
+> **Not available in GitHub Actions mode.**
+>
+> Issue status is queried live from GitHub — no sync to MEMORY.md needed.
+> Active issue status appears directly in `/start-day` and `/wrap-up` via `gh issue list`.
+
+Stop here — do not proceed to the workflow steps below.
+
+---
+
 ## Argument Resolution
 
 Parse `$ARGUMENTS` once before entering any step:

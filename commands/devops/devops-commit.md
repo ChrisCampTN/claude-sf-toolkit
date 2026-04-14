@@ -37,6 +37,27 @@ Use the returned context for all org references, team lookups, and path resoluti
 
 ---
 
+### Backend Check
+
+If the resolved context contains `workTracking.disabledSkills` and it includes `"devops-commit"`:
+
+> **Not available in GitHub Actions mode.**
+>
+> In GitHub Actions projects, metadata commits go through the standard git workflow:
+>
+> ```
+> git add <files>
+> git commit -m "feat: description (Fixes #NN)"
+> git push
+> gh pr create --title "feat: description" --body "Fixes #NN"
+> ```
+>
+> GitHub Actions handles validation on PR open and deployment on merge to main.
+
+Stop here — do not proceed to the workflow steps below.
+
+---
+
 ## Step 0 — Preflight
 
 Run the `git` and `org` suites from `/skill-preflight` logic inline (do NOT invoke the skill — just run the same checks directly to avoid circular dependencies):
