@@ -68,6 +68,54 @@ function assertEqual(actual, expected, label) {
   }
 }
 
+// ─── workTracking validation ───────────────────────────────────────────────
+
+const VALID_BACKENDS = ["devops-center", "github-actions"];
+const WORK_TRACKING_REQUIRED = [
+  "backend",
+  "branchPattern",
+  "idPrefix",
+  "idPattern",
+  "deployManagedEnvs",
+  "deployLocalEnvs",
+  "disabledSkills",
+];
+const GHA_REQUIRED = ["issueRepo", "listActiveCmd"];
+
+function validateWorkTracking(wt) {
+  if (!wt || typeof wt !== "object") {
+    return { valid: false, error: "workTracking must be an object" };
+  }
+  for (const field of WORK_TRACKING_REQUIRED) {
+    if (!(field in wt)) {
+      return { valid: false, error: `missing required field: ${field}` };
+    }
+  }
+  if (!VALID_BACKENDS.includes(wt.backend)) {
+    return {
+      valid: false,
+      error: `unknown backend: ${wt.backend} (expected: ${VALID_BACKENDS.join(", ")})`,
+    };
+  }
+  if (!Array.isArray(wt.deployManagedEnvs)) {
+    return { valid: false, error: "deployManagedEnvs must be an array" };
+  }
+  if (!Array.isArray(wt.deployLocalEnvs)) {
+    return { valid: false, error: "deployLocalEnvs must be an array" };
+  }
+  if (!Array.isArray(wt.disabledSkills)) {
+    return { valid: false, error: "disabledSkills must be an array" };
+  }
+  if (wt.backend === "github-actions") {
+    for (const field of GHA_REQUIRED) {
+      if (!wt[field]) {
+        return { valid: false, error: `GHA backend missing required field: ${field}` };
+      }
+    }
+  }
+  return { valid: true, error: null };
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 console.log("\nresolve-cache.js unit tests\n");
@@ -261,6 +309,93 @@ test("detects removed source file", () => {
   assertEqual(output.valid, false, "valid");
   assert(output.reason.includes("removed"), `reason: ${output.reason}`);
   cleanup();
+});
+
+// ─── workTracking schema validation ────────────────────────────────────────
+
+console.log("\n  workTracking schema:");
+
+test("valid DOC workTracking has required fields", () => {
+  const wt = {
+    backend: "devops-center",
+    branchPattern: "WI-{id}",
+    idPrefix: "WI-",
+    idPattern: "WI-\\d{6}",
+    listActiveCmd: null,
+    deployManagedEnvs: [],
+    deployLocalEnvs: ["dev", "staging", "production"],
+    disabledSkills: [],
+  };
+  const result = validateWorkTracking(wt);
+  assert(result.valid, "DOC workTracking should be valid: " + result.error);
+});
+
+test("valid GHA workTracking has required fields", () => {
+  const wt = {
+    backend: "github-actions",
+    issueRepo: "owner/repo",
+    branchPattern: "feature/issue-{id}-{slug}",
+    idPrefix: "#",
+    idPattern: "#\\d+",
+    listActiveCmd: "gh issue list --repo owner/repo --state open --json number,title,state,labels,assignees",
+    listAllCmd: "gh issue list --repo owner/repo --state all --json number,title,state,labels,assignees --limit 100",
+    viewItemCmd: "gh issue view {id} --repo owner/repo --json number,title,body,state,labels,assignees,comments",
+    createItemCmd: 'gh issue create --repo owner/repo --title "{title}" --body-file {bodyFile}',
+    deployManagedEnvs: ["staging", "production"],
+    deployLocalEnvs: ["dev"],
+    disabledSkills: ["devops-commit", "wi-sync"],
+  };
+  const result = validateWorkTracking(wt);
+  assert(result.valid, "GHA workTracking should be valid: " + result.error);
+});
+
+test("workTracking missing backend fails", () => {
+  const wt = { branchPattern: "WI-{id}", idPrefix: "WI-", idPattern: "WI-\\d{6}" };
+  const result = validateWorkTracking(wt);
+  assert(!result.valid, "Missing backend should fail");
+});
+
+test("workTracking with unknown backend fails", () => {
+  const wt = {
+    backend: "jenkins",
+    branchPattern: "feat-{id}",
+    idPrefix: "#",
+    idPattern: "#\\d+",
+    deployManagedEnvs: [],
+    deployLocalEnvs: [],
+    disabledSkills: [],
+  };
+  const result = validateWorkTracking(wt);
+  assert(!result.valid, "Unknown backend should fail");
+});
+
+test("GHA workTracking missing issueRepo fails", () => {
+  const wt = {
+    backend: "github-actions",
+    branchPattern: "feature/issue-{id}-{slug}",
+    idPrefix: "#",
+    idPattern: "#\\d+",
+    listActiveCmd: "gh issue list",
+    deployManagedEnvs: [],
+    deployLocalEnvs: [],
+    disabledSkills: [],
+  };
+  const result = validateWorkTracking(wt);
+  assert(!result.valid, "GHA missing issueRepo should fail");
+});
+
+test("workTracking missing deployManagedEnvs fails", () => {
+  const wt = {
+    backend: "devops-center",
+    branchPattern: "WI-{id}",
+    idPrefix: "WI-",
+    idPattern: "WI-\\d{6}",
+    listActiveCmd: null,
+    deployLocalEnvs: ["dev"],
+    disabledSkills: [],
+  };
+  const result = validateWorkTracking(wt);
+  assert(!result.valid, "Missing deployManagedEnvs should fail");
 });
 
 // ─── Summary ────────────────────────────────────────────────────────────────
