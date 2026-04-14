@@ -9,6 +9,7 @@
 
 ## File Conventions
 - Skills: `commands/{category}/{name}.md` with YAML frontmatter (name, description)
+- Workflow variants: `commands/{category}/{name}-workflows/{backend}.md` — no frontmatter, delegated by parent skill
 - Agents: `agents/{name}.md` with frontmatter (description, model, color, tools, `<example>` blocks)
 - Scripts: `script-templates/{name}.js` — portable Node.js, no external deps beyond fs/path
 - Templates: `templates/{name}.template` — scaffolded into consuming projects by /setup
@@ -17,7 +18,7 @@
 - `${CLAUDE_PLUGIN_ROOT}` — always use for referencing plugin files (never `claude plugin path` or `realpath`)
 - Cache-first resolution: skills read `.claude/sf-toolkit-cache.json` before dispatching resolver agent
 - Script resolution: check local `scripts/` first, fall back to `${CLAUDE_PLUGIN_ROOT}/script-templates/`
-- All 18 skills share identical Resolution section — batch-edit with `replace_all` when changing it
+- All skills with Resolution sections share identical cache-first pattern — batch-edit with `replace_all` when changing it
 - Config-driven values: scripts read from `config/sf-toolkit.json`, fall back to extracting from data, never hardcode project-specific values (categories, team names, etc.)
 
 ## DevOps Backend Toggle
@@ -39,7 +40,7 @@
 ## Editing Tips
 - Read files before editing (Edit tool requires prior Read even if you've grepped the content)
 - Use `replace_all: true` for renaming patterns across files (paths, common text blocks)
-- 18 skill files share the same Resolution section — grep to verify all were updated, zero old matches remain
+- Skill files share the same Resolution section — grep to verify all were updated, zero old matches remain
 - Skills without SF org context (help, setup, claude-review) must be added to `EXCLUDED_COMMANDS` in `scripts/validate-plugin.js` to skip the Cache-first resolution check
 - Windows CRLF: when parsing markdown frontmatter with regex, always `.replace(/\r\n/g, "\n")` first
 - When batch-editing shared sections, preserve skill-specific content above/below — only touch the targeted pattern
@@ -49,7 +50,7 @@
 ## Validation & Testing
 
 ### Automated (pre-commit)
-- `node scripts/validate-plugin.js` — structural checks (JSON, versions, frontmatter, stale refs, hooks)
+- `node scripts/validate-plugin.js` — structural checks (JSON, versions, frontmatter, stale refs, hooks, variant pairs, disabledSkills guards)
 - `node scripts/test-resolve-cache.js` — unit tests for the cache validation script
 - Both run automatically in the pre-commit hook when committing to the plugin repo
 
