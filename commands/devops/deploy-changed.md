@@ -267,6 +267,24 @@ If all scans complete with zero findings, report briefly: "Code quality scan: no
 
 Construct the `sf project deploy start` command with targeted `--source-dir` flags.
 
+### Managed environment check
+
+If the resolved context contains `workTracking.deployManagedEnvs` and the target org alias (or its environment name) matches any entry in that array:
+
+> **Warning: {target-org} is managed by GitHub Actions.**
+>
+> Deployments to this environment happen automatically when PRs are merged to `main`.
+> Direct deployment bypasses the CI/CD pipeline (validation, code analysis, test runs).
+>
+> **Options:**
+> 1. **Deploy to a local env instead** — target `{first entry from workTracking.deployLocalEnvs}` for testing
+> 2. **Proceed anyway** — deploy directly (use for emergency hotfixes only)
+> 3. **Open a PR instead** — push your branch and run `gh pr create`
+
+If the user chooses option 1, restart Step 5 with the local env alias. If they choose option 3, stop the skill. If they choose option 2, proceed with a warning banner in the deploy output.
+
+If `workTracking.deployManagedEnvs` is empty or missing, skip this check entirely (DOC mode — all envs are local).
+
 ### Grouping strategy:
 
 **Directories vs individual files:** If ALL files within a metadata subdirectory are changed (e.g., every field file under `{context.metadataPath}/objects/MyObject__c/fields/`), use the directory path instead of listing each file. This keeps the command shorter while remaining targeted.

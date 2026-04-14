@@ -361,10 +361,21 @@ Retrieved {n} components from {target-org}.
 - ...
 
 ### Next Steps:
-1. Review the changes: git diff {context.metadataPath}/flows/
-2. Stage and commit: git add {files} && git commit -m "Retrieve org drift: {summary}"
-3. Deploy to dev sandbox: /deploy-changed
-4. Associate with work item: /devops-commit WI-NNNNNN
+1. Review the changes: `git diff {context.metadataPath}/flows/`
+2. Stage and commit: `git add {files} && git commit -m "Retrieve org drift: {summary}"`
+3. Deploy to dev sandbox: `/deploy-changed`
+
+**If `workTracking.backend` == `"devops-center"`:**
+4. Associate with work item: `/devops-commit WI-NNNNNN`
+
+**If `workTracking.backend` == `"github-actions"`:**
+4. Create an Issue and PR:
+   ```
+   gh issue create --title "Fix drift: {summary}" --label "bug"
+   git checkout -b feature/issue-{id}-fix-drift
+   git push -u origin feature/issue-{id}-fix-drift
+   gh pr create --title "Fix drift: {summary}" --body "Fixes #{id}"
+   ```
 ```
 
 ### Org-Only Component Retrieval
