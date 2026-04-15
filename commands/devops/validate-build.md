@@ -32,6 +32,7 @@ Examples:
 ```
 /validate-build BL-0001
 /validate-build WI-000010 --section "Custom Notification Types"
+/validate-build #12 --section "Custom Notification Types"
 /validate-build BL-0002 --target-org SomeOrg
 /validate-build docs/design/example.md --section "Provider Alert Flows"
 /validate-build --resume
@@ -71,11 +72,12 @@ Use the returned context for all org references, team lookups, and path resoluti
 
 ## Step 0 — Resolve Input & Load Context
 
-1. **Parse arguments.** Extract BL-NNNN, WI-NNNNNN, doc path, flags.
+1. **Parse arguments.** Extract BL-NNNN, WI-NNNNNN, #NN, doc path, flags.
 
 2. **Resolve the design doc:**
-   - If `BL-NNNN`: read the backlog source, find the item, extract `design_doc` and `devops_wis`. If no `design_doc`, STOP: "BL-NNNN has no design_doc — nothing to validate against."
-   - If `WI-NNNNNN`: scan the backlog source for any item whose `devops_wis` contains this WI. Then resolve as BL item.
+   - If `BL-NNNN`: read the backlog source, find the item, extract `design_doc` and work item references. If no `design_doc`, STOP: "BL-NNNN has no design_doc — nothing to validate against."
+   - If `WI-NNNNNN` (DOC mode): scan the backlog source for any item whose `devops_wis` contains this WI. Then resolve as BL item.
+   - If `#NN` or bare number (GHA mode): fetch the Issue via `gh issue view {number} --repo {workTracking.issueRepo} --json body`. Extract the design doc path from the `## Design` section in the body. If "(none)", STOP: "Issue #{NN} has no design doc — nothing to validate against."
    - If doc path: verify file exists, use directly.
    - If `--resume`: load `.validation-session.json` from repo root. Verify it exists. Skip to Step 3 with loaded state.
 
@@ -421,7 +423,7 @@ After completing the walkthrough (or if the user wants to pause), save the sessi
 {
   "version": 1,
   "backlog_item": "BL-0001",
-  "work_items": ["WI-000010"],
+  "work_items": ["WI-000010 or #12"],
   "design_doc": "docs/design/example.md",
   "section": "Custom Notification Types",
   "target_org": "{context.orgs.devAlias}",

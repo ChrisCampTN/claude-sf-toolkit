@@ -54,7 +54,7 @@ Invoke `/skill-preflight deploy-changed` to run the `git`, `org`, and `metadata`
 3. **Production safety gate (Tier 2):** If `--target-org` is `{context.orgs.productionAlias}` or any alias containing `prod`/`production` (case-insensitive), display a prominent warning:
    ```text
    !! TARGET ORG IS PRODUCTION !!
-   You are about to deploy to Production. This bypasses the DevOps Center pipeline.
+   You are about to deploy to Production. This bypasses the normal promotion pipeline.
    Only org-level settings metadata (DataCategoryGroup, etc.) should be deployed directly.
    ```
    Ask for explicit confirmation before proceeding.
@@ -457,10 +457,15 @@ After a successful (non-dry-run) deploy:
 
    Next steps:
    - Commit these changes using /commit-commands:commit
+
+   **If `workTracking.backend` == `"devops-center"`:**
    - Associate with work item: /devops-commit {WI-NNNNNN} {sha}
+
+   **If `workTracking.backend` == `"github-actions"`:**
+   - Push your branch and open a PR: `git push && gh pr create --title "..." --body "Fixes #NN"`
    ```
 
-5. **Suggest commit message** based on the deployed files — follow the patterns from recent commits (WI prefix if applicable, descriptive summary).
+5. **Suggest commit message** based on the deployed files — follow the patterns from recent commits (WI/Issue prefix if applicable, descriptive summary).
 
 ---
 

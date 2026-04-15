@@ -1,17 +1,17 @@
 ---
 name: detect-drift
-description: Compare org metadata against local git source to find components modified outside DevOps Center
+description: Compare org metadata against local git source to find components modified outside the managed pipeline
 ---
 
 # /detect-drift — Detect Org Metadata Drift
 
-Compare metadata in a Salesforce org against local git source to find components modified directly in the org (outside the DevOps Center pipeline). Produces a drift report and offers targeted retrieval.
+Compare metadata in a Salesforce org against local git source to find components modified directly in the org (outside the managed deployment pipeline — DevOps Center or GitHub Actions). Produces a drift report and offers targeted retrieval.
 
 **Arguments:** `$ARGUMENTS`
 
 Arguments can be:
 
-- Empty — scan flows in production (most common: hotfixes go in outside DevOps Center)
+- Empty — scan flows in production (most common: hotfixes applied directly in the org)
 - `flows` — scan flows only (default if no type specified)
 - `objects` — scan custom objects and fields
 - `all` — scan all supported metadata types
