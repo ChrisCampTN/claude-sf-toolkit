@@ -17,7 +17,8 @@ The validation direction is inferred from build mode: agent-driven metadata buil
 Arguments can be:
 
 - A backlog item: `BL-0001` (resolves design_doc + devops_wis from backlog.yaml)
-- A work item: `WI-000010` (resolves to BL item via devops_wis, then design_doc)
+- A work item: `WI-000010` (DOC mode — resolves to BL item via devops_wis, then design_doc)
+- A GitHub Issue: `#12` or `12` (GHA mode — resolves to Issue, reads design doc from `## Design` section in body)
 - A design doc path: `docs/design/example.md` (direct)
 - Flags:
   - `--section "Section Name"` — scope to a specific section/component group within the design doc (e.g., `--section "Custom Notification Types"` or `--section "Provider Alert Flows"`)
@@ -606,14 +607,33 @@ Continue this loop until all items are PASS, SKIP, or DEFER.
 When the user is satisfied:
 
 1. **Update the validation report** with final verdicts.
-2. **Log to memory** if there's reusable feedback:
+2. **Write the validation marker** — write a single line to `.last-validate-build` in the project root:
+   ```
+   {YYYY-MM-DD}|{WI-NNNNNN or #NN}|{PASS/NEEDS FIXES: n PASS, n FAIL, n ADJUST}
+   ```
+   Example: `2026-04-14|WI-000044|PASS: 14 PASS, 0 FAIL, 0 ADJUST`
+   Example: `2026-04-14|#12|NEEDS FIXES: 10 PASS, 2 FAIL, 1 ADJUST`
+
+   Use the WI number (DOC mode) or Issue number (GHA mode) based on `workTracking.backend`. If the input was a BL item, use its associated WI/Issue reference. If the input was a design doc path with no WI/Issue, use the BL-NNNN ID instead.
+
+   This file is checked by `/devops-commit` (DOC: before promotion) and referenced in the GHA PR workflow guidance. The gate considers validations from prior days as stale.
+
+   Add `.last-validate-build` to `.gitignore` if not already present.
+3. **Log to memory** if there's reusable feedback:
    - Recurring build issues (e.g., "flows always deploy inactive") → suggest a feedback memory
    - Spec patterns that cause confusion → suggest a feedback memory
    - Only save feedback that applies to future builds, not one-off fixes
-3. **Suggest next steps:**
+4. **Suggest next steps:**
+
+   **If `workTracking.backend` == `"devops-center"`:**
    - If all PASS: "Ready for promotion via DevOps Center."
    - If DEFER items remain: "Schedule follow-up validation for {deferred items}."
    - If this was one section: "Run `/validate-build {BL-NNNN}` without `--section` to validate remaining components."
+
+   **If `workTracking.backend` == `"github-actions"`:**
+   - If all PASS: "Ready for PR — push your branch and run `gh pr create`."
+   - If DEFER items remain: "Schedule follow-up validation for {deferred items}."
+   - If this was one section: "Run `/validate-build #{NN}` without `--section` to validate remaining components."
 
 ---
 
