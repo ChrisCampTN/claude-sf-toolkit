@@ -32,6 +32,7 @@
 - Parent `backlog.md` routes to the correct variant based on `workTracking.backend` (or explicit `backlog.backend` override)
 - When editing a variant file, check the counterpart for matching changes to shared sub-commands
 - `/validate-build` gate: DOC promotions and GHA PRs should complete validate-build first (--skip-validation to bypass)
+- `.last-validate-build` marker: written by validate-build, checked by devops-commit gate. Format: `{YYYY-MM-DD}|{WI-or-#NN}|{summary}`. Same-day + matching ref = valid. Gitignored.
 
 ## Version Management
 - Three files must stay in sync: package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json
@@ -45,6 +46,7 @@
 - Windows CRLF: when parsing markdown frontmatter with regex, always `.replace(/\r\n/g, "\n")` first
 - When batch-editing shared sections, preserve skill-specific content above/below — only touch the targeted pattern
 - After any multi-file change, run `node scripts/validate-plugin.js` before claiming done — zero failures required
+- After cross-cutting backend changes, grep `DevOps Center` across `commands/` and `agents/` — all hits should be inside backend-branched sections or mention both backends
 - If a change touches scripts, also run `node scripts/test-resolve-cache.js`
 
 ## Validation & Testing
