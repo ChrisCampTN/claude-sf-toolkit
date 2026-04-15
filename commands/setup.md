@@ -251,7 +251,7 @@ If `CLAUDE.md` doesn't exist:
    - `{{PROJECT_DESCRIPTION}}`: one paragraph about the project
    - `{{MANAGED_PACKAGE_NOTES}}`: what middleware/packages handle integrations
    - `{{LICENSE_TYPES}}`: license types in use (e.g., "Enterprise (internal), Community Plus (partners)")
-   - `{{ORG_SPECIFIC_DEVOPS_NOTES}}`: project-specific DevOps Center or pipeline notes
+   - `{{ORG_SPECIFIC_DEVOPS_NOTES}}`: project-specific DevOps pipeline notes (DevOps Center or GitHub Actions)
    - `{{PROJECT_SPECIFIC_WARNINGS}}`: any additional critical warnings
    - `{{DATA_MODEL_SUMMARY}}`: key objects and their relationships (can reference a KB doc)
 3. Replace placeholders and write the file
@@ -270,12 +270,19 @@ Same pattern as CLAUDE.md:
 - If missing: read `templates/README.md.template`, walk through placeholders (`{{PROJECT_NAME}}`, `{{PROJECT_DESCRIPTION}}`, `{{ARCHITECTURE_SUMMARY}}`, `{{TEAM_TABLE}}`), write file
 - If exists: check for completeness, propose additions if needed
 
-### Step 9: Verify Org Connectivity & DevOps Center
+### Step 9: Verify Org Connectivity & DevOps Pipeline
 
 1. Run `sf org display --target-org {dev-alias} --json` — verify dev sandbox is reachable
 2. Run `sf org display --target-org {production-alias} --json` — verify production is reachable
+
+**If `devops.backend` == `"devops-center"`:**
 3. Query `SELECT Id, Name FROM DevopsProject` against production — verify DevOps Center is configured
 4. Report results: connected/unreachable for each org, DevOps Center project name(s)
+
+**If `devops.backend` == `"github-actions"`:**
+3. Run `gh auth status` — verify GitHub CLI is authenticated
+4. Run `gh repo view --json name,owner` — verify repo access
+5. Report results: connected/unreachable for each org, GitHub repo name, gh auth status
 
 If either org is unreachable, provide the auth command to fix it.
 
@@ -333,7 +340,7 @@ SF TOOLKIT SETUP — COMPLETE
 Project: {name}
 Dev Org: {alias} — {connected/unreachable}
 Production: {alias} — {connected/unreachable}
-DevOps Center: {project name or "not configured"}
+DevOps Backend: {devops-center: project name | github-actions: repo name | "not configured"}
 
 Created:
   ✓ config/sf-toolkit.json

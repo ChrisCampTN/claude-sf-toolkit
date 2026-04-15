@@ -5,7 +5,7 @@ description: Upstream backlog management — add, evaluate, prioritize, graduate
 
 # /backlog — Backlog Management
 
-Manage the upstream backlog — add, evaluate, prioritize, graduate, search, and render. The backlog is the **single source of truth** for the full work lifecycle, from initial capture through completion. DevOps Center work items are the execution mechanism for In Progress and Done stages.
+Manage the upstream backlog — add, evaluate, prioritize, graduate, search, and render. The backlog is the **single source of truth** for the full work lifecycle, from initial capture through completion. Work items (DevOps Center) or Issues (GitHub) are the execution mechanism for In Progress and Done stages.
 
 **Arguments:** $ARGUMENTS
 
@@ -15,7 +15,7 @@ Arguments can be:
 - `add` — interactive add via AskUserQuestion
 - `evaluate BL-NNNN` — triage an item (set effort, complexity, priority, tags)
 - `prioritize [category]` — review and reorder priorities
-- `graduate BL-NNNN` — verify scoped + assigned, link DevOps Center WI(s), set Ready
+- `graduate BL-NNNN` or `graduate #NN` — verify scoped + assigned, link work item/activate issue, set Ready
 - `search {filters}` — filter items by category, tag, status, assignee, or free text
 - `update BL-NNNN` — edit fields on an existing item
 - `archive` — move Done items to archive.yaml

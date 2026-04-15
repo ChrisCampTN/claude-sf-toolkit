@@ -1,12 +1,12 @@
 ---
 description: >
-  Use this agent when /start-day needs a unified view of active work across MEMORY.md, backlog, and DevOps Center. Runs in parallel with git-state and external-context agents.
+  Use this agent when /start-day needs a unified view of active work across MEMORY.md, backlog, and the work tracking backend (DevOps Center or GitHub Issues). Runs in parallel with git-state and external-context agents.
 
   <example>
   Context: Daily planning briefing — need to know what work items are active.
   user: "/start-day"
-  assistant: "Dispatching active-work agent to merge WI status from memory, backlog, and DevOps Center."
-  <commentary>This agent reads local files and queries DevOps Center to build a unified work status view split by assignment.</commentary>
+  assistant: "Dispatching active-work agent to merge work item status from memory, backlog, and the work tracking backend."
+  <commentary>This agent reads local files and queries the configured work tracking backend (DevOps Center or GitHub Issues) to build a unified work status view split by assignment.</commentary>
   </example>
 model: inherit
 color: yellow
@@ -17,7 +17,7 @@ tools: ["Read", "Grep", "Glob", "Bash", "mcp__Salesforce-DX__run_soql_query", "m
 
 ## Your Job
 
-Build a unified view of all active work from memory, backlog, and DevOps Center. Split by assignment: current user's work, team work, and unassigned. Active work = any item that is In Progress OR (Ready + assigned).
+Build a unified view of all active work from memory, backlog, and the work tracking backend (DevOps Center or GitHub Issues, based on `workTracking.backend`). Split by assignment: current user's work, team work, and unassigned. Active work = any item that is In Progress OR (Ready + assigned).
 
 ## Reference Files
 
@@ -41,9 +41,9 @@ Read from three sources and merge:
 
 **Source 1 — MEMORY.md:** Read the Active Work Items table from `.claude/memory/MEMORY.md`. Extract WI number, name, backlog ID, assigned, status, and notes for each row.
 
-**Source 2 — Backlog:** Read `docs/backlog/backlog.yaml`. Filter to items where `status` is `In Progress` or `Ready`. For each, extract: id, title, status, assigned_to, devops_wis, blocked_by, priority, effort.
+**Source 2 — Backlog:** Read the backlog source (YAML file or GitHub Issues, depending on `workTracking.backend`). Filter to items where `status` is `In Progress` or `Ready`. For each, extract: id, title, status, assigned_to, work item references, blocked_by, priority, effort.
 
-**Source 3 — DevOps Center (if not quickMode):** Query live WI status. Use the Salesforce DX MCP tool `mcp__Salesforce-DX__list_devops_center_work_items` targeting **{{productionOrgAlias}}** (WorkItem only exists in production, not sandboxes).
+**Source 3 — Work tracking backend (if not quickMode):** Query live work item/issue status from the configured backend.
 
 If {{quickMode}} is "true", skip the work item/issue query and report: `[SKIP] Work item freshness check skipped (--quick).`
 
@@ -67,21 +67,21 @@ If the MCP query fails (server not connected, auth expired), log the failure and
 
 For each item, resolve:
 
-- **Tracking type:** `WI` (has `devops_wis` entry) or `Backlog-only` (no WI)
-- **Assignment:** Match `assigned_to` against {{currentUserName}}. For WI items, also cross-reference DevOps Center `owner` against {{currentSfUserId}}.
-- **Status:** Use DevOps Center as ground truth for WI items. Use backlog `status` for non-WI items.
+- **Tracking type:** `WI` (DOC: has `devops_wis` entry), `Issue` (GHA: has Issue reference), or `Backlog-only` (no work item)
+- **Assignment:** Match `assigned_to` against {{currentUserName}}. For DOC WI items, also cross-reference DevOps Center `owner` against {{currentSfUserId}}. For GHA Issues, use `assignees` from the Issue JSON.
+- **Status:** Use the work tracking backend as ground truth for tracked items. Use backlog `status` for backlog-only items.
 
 ### 3. Check for Drift
 
-**WI Status Drift:** If DevOps Center data was retrieved, compare WI statuses against MEMORY.md rows. Flag any mismatches.
+**Work item status drift:** If backend data was retrieved, compare statuses against MEMORY.md rows (DOC) or against the backlog context (GHA). Flag any mismatches.
 
-**Assignment Drift:** Compare backlog `assigned_to` against DevOps Center WI `owner`. Flag:
+**Assignment drift:** Compare backlog assignments against the work tracking backend. Flag:
 
-- Backlog says unassigned but WI has owner — **Backlog behind**
-- Backlog and WI disagree on assignee — **Assignment mismatch**
-- Backlog has assignee but WI has no owner — **WI behind**
+- Backlog says unassigned but work item has owner — **Backlog behind**
+- Backlog and work item disagree on assignee — **Assignment mismatch**
+- Backlog has assignee but work item has no owner — **Work item behind**
 
-If DevOps Center was skipped, skip drift checks: `[SKIP] Assignment drift check skipped (no WI data).`
+If the backend query was skipped, skip drift checks: `[SKIP] Assignment drift check skipped (no work item data).`
 
 ### 4. Read Initiative Context
 

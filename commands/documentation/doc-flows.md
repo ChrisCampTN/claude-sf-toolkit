@@ -185,7 +185,7 @@ All {n} flows in scope are unchanged since their last documentation date. No doc
 No downstream artifacts were generated.
 ```
 
-Do **not** create a DevOps Center Work Item (skip Step 13), do **not** update indexes, and do **not** modify any XML descriptions.
+Do **not** create a work item or Issue (skip Step 13), do **not** update indexes, and do **not** modify any XML descriptions.
 
 ---
 
@@ -524,15 +524,15 @@ Format for each row:
 
 ## Step 10 — XML Descriptions (SKIPPED by default)
 
-**By default, XML `<description>` updates are handled by `/devops-commit`**, not `/doc-flows`. When a developer commits flow logic to a WI branch, `/devops-commit` automatically syncs the description from the existing markdown doc using `scripts/flow-description-sync.js`. This keeps descriptions in the same promotion as logic changes — no separate description-only deployments needed.
+**By default, XML `<description>` updates are handled during the commit workflow** (DOC mode: `/devops-commit` syncs descriptions when committing to WI branches; GHA mode: descriptions are committed with the feature branch). The sync uses `scripts/flow-description-sync.js` to copy the Purpose from the markdown doc into the flow XML.
 
 `/doc-flows` no longer modifies `{context.metadataPath}/` files. It only writes markdown documentation and updates indexes on `main`.
 
-**Override:** Pass `--update-xml` to force `/doc-flows` to update XML descriptions (for catchup scenarios where flows were deployed outside DevOps Center). When `--update-xml` is used, follow the legacy Step 10 behavior:
+**Override:** Pass `--update-xml` to force `/doc-flows` to update XML descriptions (for catchup scenarios where flows were deployed outside the normal pipeline). When `--update-xml` is used, follow the legacy Step 10 behavior:
 
 1. Run `node scripts/flow-description-sync.js {FlowName1} {FlowName2} ...` for all documented flows.
 2. The script reads the Purpose from each flow's markdown doc and updates the XML `<description>`.
-3. Commit the XML changes with `ALLOW_FORCEAPP_ON_MAIN=1` (catchup deploys go direct to production, not through DevOps Center).
+3. Commit the XML changes with `ALLOW_FORCEAPP_ON_MAIN=1` (catchup deploys bypass the normal pipeline).
 
 **Commit step (docs only):**
 

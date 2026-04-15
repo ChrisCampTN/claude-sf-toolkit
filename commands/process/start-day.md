@@ -76,7 +76,7 @@ Dispatch 3 purpose-built agents in parallel to gather independent data. Each age
 ### Agent Prompt Files
 
 1. `start-day-git-state` agent — Git state + org drift check
-2. `start-day-active-work` agent — Memory + backlog + DevOps Center merge
+2. `start-day-active-work` agent — Memory + backlog + work tracking backend merge
 3. `start-day-external-context` agent — Calendar, email, Slack
 
 ### Variable Substitution

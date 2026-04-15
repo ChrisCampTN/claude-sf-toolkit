@@ -167,15 +167,23 @@ Split current-session changes into two commit routes:
 
 | Category            | How to identify                                                   | Commit route                                                                                                |
 | ------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Repo-only files** | `docs/**/*.md`, `.claude/commands/*.md`, `CLAUDE.md`, `README.md` | Commit on **main**, push to origin directly                                                                 |
-| **SF metadata**     | `force-app/**` (flow XMLs, objects, fields, etc.)                 | Commit on **WI branch**, push WI branch for DevOps Center promotion                                         |
-| **Skill files**     | `.claude/commands/*.md`                                           | Commit on **main** (repo-only), but remind: `/skill-preflight` should run before committing modified skills |
+| **Repo-only files** | `docs/**/*.md`, `.claude/commands/*.md`, `CLAUDE.md`, `README.md` | Commit on **main** (DOC mode) or **feature branch** (GHA mode), push to origin |
+| **SF metadata**     | `force-app/**` (flow XMLs, objects, fields, etc.)                 | See backend-specific rules below |
+| **Skill files**     | `.claude/commands/*.md`                                           | Same as repo-only, but remind: `/skill-preflight` should run before committing modified skills |
 
-**Why the split:** SF metadata changes (`force-app/`) are source-tracked by DevOps Center and must go through the promotion pipeline (dev sandbox → Staging → Production). Committing them to main would bypass the pipeline. Repo-only files (docs, skills, memory) are not deployed to Salesforce and can live on main directly.
+**If `workTracking.backend` == `"devops-center"`:**
+
+SF metadata changes (`force-app/`) are source-tracked by DevOps Center and must go through the promotion pipeline (dev sandbox → Staging → Production). Committing them to main would bypass the pipeline. Repo-only files (docs, skills, memory) are not deployed to Salesforce and can live on main directly.
+
+**If `workTracking.backend` == `"github-actions"`:**
+
+All changes (repo-only AND SF metadata) go on the **feature branch** (`feature/issue-{id}-{slug}`). There is no WI branch split — the feature branch IS the work unit. Commit everything together and push. GitHub Actions handles validation on PR and deployment on merge.
 
 ### 3c — Execute Commits
 
 Execute directly — no confirmation prompt:
+
+**If `workTracking.backend` == `"devops-center"`:**
 
 1. **Main commit first:** Stage repo-only files and commit using `/commit-commands:commit`. **NEVER stage `force-app/` files on main** — SF metadata must only be committed to WI branches. DevOps Center merges WI branches back to main after promotion.
 2. **WI branch commit via `/devops-commit`:** If there are `force-app/` changes and a WI number is known, invoke `/devops-commit WI-NNNNNN` which handles: stashing, checking out the WI branch, committing only `force-app/` files, pushing, deploying to the dev sandbox, and returning to main.
@@ -183,13 +191,31 @@ Execute directly — no confirmation prompt:
 
 **Pause only if:** no WI branch exists (user must create via DevOps Center UI), merge conflict, or ambiguous WI assignment for `force-app/` files.
 
+**If `workTracking.backend` == `"github-actions"`:**
+
+1. **Single commit on feature branch:** Stage all changes (repo-only + `force-app/`) and commit using `/commit-commands:commit`. All files belong on the feature branch together.
+2. **Push:** `git push` the feature branch to origin.
+
+**Pause only if:** not on a feature branch (suggest creating one via `/backlog graduate #{NN}`), or merge conflict.
+
 Report results:
 
+**DOC mode:**
 ```text
 ### Commits
 
 **main:** {short hash} — {message} (pushed to origin)
 **WI-{number}:** {short hash} — {message} (pushed + deployed to dev sandbox)
+
+**Prior session changes (not committed):**
+- {n} files from other sessions still uncommitted
+```
+
+**GHA mode:**
+```text
+### Commits
+
+**feature/issue-{id}-{slug}:** {short hash} — {message} (pushed to origin)
 
 **Prior session changes (not committed):**
 - {n} files from other sessions still uncommitted
@@ -224,7 +250,9 @@ git rev-list --count origin/main..main
 [OK] Local main is up to date with origin.
 ```
 
-### Also check for WI branches with undeployed metadata
+### Also check for stale work branches (DOC mode only)
+
+**If `workTracking.backend` == `"devops-center"`:**
 
 WI branches may have been pushed to origin in prior sessions but never deployed to the dev sandbox. Without deployment, DevOps Center cannot promote them.
 
@@ -252,6 +280,10 @@ sf project deploy start --target-org {context.orgs.devAlias} --source-dir {paths
 ```
 
 **Note:** Only deploy `force-app/` files — never deploy docs, skills, or CLAUDE.md to the org.
+
+**If `workTracking.backend` == `"github-actions"`:**
+
+Skip this check — GHA mode has no WI branches. Feature branches are managed through PRs.
 
 ---
 
