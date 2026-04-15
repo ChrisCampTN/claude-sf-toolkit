@@ -19,7 +19,7 @@ Arguments can be:
 - `search {filters}` — filter items by category, tag, status, assignee, or free text
 - `update BL-NNNN` — edit fields on an existing item
 - `archive` — move Done items to archive.yaml
-- `render` — regenerate README.md from YAML
+- `render` — regenerate README.md from the backlog source (YAML or GitHub Issues, depending on backend)
 
 ---
 
@@ -74,21 +74,25 @@ Use these scripts for data manipulation instead of manually parsing/writing YAML
 
 For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
+All four read/write scripts accept `--backend yaml` (default) or `--backend github --repo {owner/repo}`. In GHA mode, they shell out to `gh issue list/create/edit` and map label-encoded fields (`status:*`, `cat:*`, `effort:*`, `P*`, etc.) to the same internal item shape used for YAML.
+
 | Script                        | Purpose                                  | Usage                                                                     |
 | ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------- |
-| `scripts/backlog-render.js`   | Generate README.md from YAML             | `node scripts/backlog-render.js`                                          |
-| `scripts/backlog-validate.js` | Validate schema, tags, cross-refs        | `node scripts/backlog-validate.js [--fix]`                                |
-| `scripts/backlog-stats.js`    | Dashboard stats as JSON or table         | `node scripts/backlog-stats.js [--table]`                                 |
-| `scripts/backlog-add.js`      | Add new item with auto-ID and validation | `node scripts/backlog-add.js --title "..." --category Platform [options]` |
-| `scripts/backlog-search.js`   | Filter items by category/tag/status/text | `node scripts/backlog-search.js tag:lwc [--json\|--count]`                |
+| `scripts/backlog-render.js`   | Generate README.md (YAML or Issues)      | `node scripts/backlog-render.js [--backend github --repo OWNER/REPO]`     |
+| `scripts/backlog-validate.js` | Validate schema, tags, cross-refs (YAML) | `node scripts/backlog-validate.js [--fix]` *(YAML-only)*                  |
+| `scripts/backlog-stats.js`    | Dashboard stats as JSON or table         | `node scripts/backlog-stats.js [--table] [--backend github --repo ...]`   |
+| `scripts/backlog-add.js`      | Add new item / create GitHub Issue       | `node scripts/backlog-add.js --title "..." --category Platform [options]` |
+| `scripts/backlog-search.js`   | Filter items by category/tag/status/text | `node scripts/backlog-search.js tag:lwc [--json\|--count] [--backend ...]`|
 
 **When to use scripts vs. manual YAML editing:**
 
-- **Adding items:** Always use `backlog-add.js` — handles ID generation, tag validation, YAML formatting
-- **Rendering:** Always use `backlog-render.js` — produces consistent README.md
-- **Dashboard/search:** Use `backlog-stats.js` and `backlog-search.js` — faster than parsing YAML in-context
-- **Evaluating/updating/graduating:** Read YAML with scripts for context, but edit fields directly (scripts don't cover all status transitions yet)
-- **Validation:** Run `backlog-validate.js` after any manual YAML edit
+- **Adding items:** Always use `backlog-add.js` — handles ID generation, tag validation, YAML formatting (YAML mode) or label slugging and issue creation (GHA mode)
+- **Rendering:** Always use `backlog-render.js` — produces consistent README.md from either source
+- **Dashboard/search:** Use `backlog-stats.js` and `backlog-search.js` — faster than parsing YAML/JSON in-context
+- **Evaluating/updating/graduating:** Read data with scripts for context, but edit fields directly (scripts don't cover all status transitions yet)
+- **Validation:** Run `backlog-validate.js` after any manual YAML edit (no GHA equivalent — GitHub doesn't enforce a schema)
+
+**Finding the GHA repo:** when calling these scripts from a skill in GHA mode, pass `--backend github --repo {workTracking.issueRepo}` (from the resolved context).
 
 ## YAML Schema Reference
 

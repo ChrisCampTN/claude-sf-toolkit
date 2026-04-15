@@ -42,9 +42,23 @@ This skill uses helper scripts. For each script reference, check `scripts/` loca
 | Script                              | Purpose                                          |
 | ----------------------------------- | ------------------------------------------------ |
 | `platform-review-consolidate.js`    | Merge, deduplicate, and sort persona findings    |
-| `backlog-add.js`                    | Add items to backlog                             |
+| `backlog-add.js`                    | Add items to backlog (YAML or GitHub Issues)     |
 | `backlog-render.js`                 | Regenerate backlog README                        |
 | `flow-index.js`                     | Flow metadata for QA and Standards personas      |
+
+### Backlog Backend Flags
+
+Determine the effective backend for backlog script calls (used by Step 9):
+
+- If `backlog.backend` in the resolved context is explicitly `"github-issues"`, OR `workTracking.backend` is `"github-actions"` and `backlog.backend` is not set:
+  - Set `BACKLOG_FLAGS = "--backend github --repo {workTracking.issueRepo}"`
+  - Item IDs are GitHub Issue numbers (`#NN`), not `BL-NNNN`
+  - For "expand" operations: append a comment to the existing issue via `gh issue comment {number} --repo {workTracking.issueRepo} --body "..."` instead of editing a YAML notes array
+- Otherwise:
+  - Set `BACKLOG_FLAGS = ""` (YAML default)
+  - Item IDs are `BL-NNNN`
+
+Apply `{BACKLOG_FLAGS}` verbatim to every `backlog-*.js` invocation below.
 
 ---
 
@@ -540,7 +554,7 @@ Ask the user to choose:
 - `add all new + expand all` — both operations
 - `skip` — skip backlog integration, review report only
 
-For **new items**, run `node scripts/backlog-add.js` for each approved item with:
+For **new items**, run `node scripts/backlog-add.js {BACKLOG_FLAGS}` for each approved item with:
 
 - `--title` from finding title
 - `--description` from finding description + recommendation
@@ -552,12 +566,14 @@ For **new items**, run `node scripts/backlog-add.js` for each approved item with
 - `--source claude-session`
 - `--note "Added from /platform-review {persona} finding {id}"`
 
-For **expand items**, update the existing backlog item's notes array in the backlog data file with a new note entry referencing the platform review finding.
+For **expand items**:
+- **YAML mode:** update the existing backlog item's notes array in `{context.backlog.path}/backlog.yaml` with a new note entry referencing the platform review finding.
+- **GHA mode:** append a comment to the issue: `gh issue comment {number} --repo {workTracking.issueRepo} --body "Platform review finding: {finding summary and link}"`.
 
 After all additions/expansions, regenerate the backlog:
 
 ```bash
-node scripts/backlog-render.js
+node scripts/backlog-render.js {BACKLOG_FLAGS}
 ```
 
 ---

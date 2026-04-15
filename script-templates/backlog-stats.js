@@ -3,12 +3,14 @@
 "use strict";
 
 /**
- * backlog-stats.js — Generate statistics from backlog.yaml
+ * backlog-stats.js — Generate statistics from backlog.yaml OR GitHub Issues.
  *
  * Usage:
  *   node scripts/backlog-stats.js [options]
  *
  * Options:
+ *   --backend <yaml|github> Data backend (default: yaml)
+ *   --repo <owner/repo>     GitHub repo (required when --backend github)
  *   --backlog-path <path>   Path to backlog.yaml (default: docs/backlog/backlog.yaml)
  *   --archive-path <path>   Path to archive.yaml (default: docs/backlog/archive.yaml)
  *   --table                 Human-readable table output (default: JSON)
@@ -17,6 +19,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 const yaml = require("js-yaml");
 
 const REPO_ROOT = path.join(__dirname, "..");
@@ -36,6 +39,8 @@ function parseCliArgs(argv) {
           "Usage: node scripts/backlog-stats.js [options]",
           "",
           "Options:",
+          "  --backend <yaml|github> Data backend (default: yaml)",
+          "  --repo <owner/repo>     GitHub repo (required when --backend github)",
           "  --backlog-path <path>   Path to backlog.yaml (default: docs/backlog/backlog.yaml)",
           "  --archive-path <path>   Path to archive.yaml (default: docs/backlog/archive.yaml)",
           "  --table                 Human-readable table output (default: JSON)",
@@ -66,6 +71,17 @@ function parseCliArgs(argv) {
 
 const CLI_ARGS = parseCliArgs(process.argv);
 const tableMode = CLI_ARGS.table || false;
+const BACKEND = (CLI_ARGS["backend"] || "yaml").toLowerCase();
+const REPO = CLI_ARGS["repo"] || null;
+
+if (BACKEND !== "yaml" && BACKEND !== "github") {
+  console.error(`Error: --backend must be 'yaml' or 'github' (got: ${BACKEND})`);
+  process.exit(1);
+}
+if (BACKEND === "github" && !REPO) {
+  console.error("Error: --backend github requires --repo <owner/repo>");
+  process.exit(1);
+}
 
 const BACKLOG_FILE = path.resolve(
   REPO_ROOT,
@@ -76,14 +92,144 @@ const ARCHIVE_FILE = path.resolve(
   CLI_ARGS["archive-path"] || "docs/backlog/archive.yaml"
 );
 
-// Parse files
-const backlogData = yaml.load(fs.readFileSync(BACKLOG_FILE, "utf8"));
-const backlogItems = (backlogData && backlogData.items) || [];
+// ---------------------------------------------------------------------------
+// GitHub Issues source — maps issues into the internal item shape so the
+// downstream bucketing logic works unchanged.
+// ---------------------------------------------------------------------------
 
-let archiveItems = [];
-if (fs.existsSync(ARCHIVE_FILE)) {
-  const archiveData = yaml.load(fs.readFileSync(ARCHIVE_FILE, "utf8"));
-  archiveItems = (archiveData && archiveData.items) || [];
+const STATUS_LABEL_MAP = {
+  captured: "Captured",
+  groomed: "Evaluated",
+  evaluated: "Evaluated",
+  prioritized: "Prioritized",
+  ready: "Ready",
+  "in-progress": "In Progress",
+  "in progress": "In Progress",
+  done: "Done",
+  deferred: "Deferred"
+};
+
+function loadConfiguredCategories() {
+  const configPath = path.resolve(REPO_ROOT, "config/sf-toolkit.json");
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (
+      config.backlog &&
+      Array.isArray(config.backlog.categories) &&
+      config.backlog.categories.length > 0
+    ) {
+      return config.backlog.categories;
+    }
+  } catch {
+    // Config missing or invalid
+  }
+  return [];
+}
+
+// GitHub labels can't contain "/", so "UI/UX" becomes "UI-UX" in cat:* labels.
+// Build a slug→display map to round-trip categories back to their config form.
+function buildCategorySlugMap(categories) {
+  const map = {};
+  for (const cat of categories) {
+    map[cat.replace(/\//g, "-").toLowerCase()] = cat;
+  }
+  return map;
+}
+
+function unslugCategory(rawValue, slugMap) {
+  if (!rawValue) return "";
+  return slugMap[rawValue.toLowerCase()] || rawValue;
+}
+
+function fetchGitHubIssues(repo) {
+  try {
+    execSync("gh --version", { stdio: "ignore" });
+  } catch {
+    console.error("Error: 'gh' CLI not found. Install from https://cli.github.com/");
+    process.exit(1);
+  }
+  try {
+    const json = execSync(
+      `gh issue list --repo ${repo} --state all --json number,title,body,state,labels,assignees,createdAt,updatedAt --limit 200`,
+      { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }
+    );
+    return JSON.parse(json);
+  } catch (err) {
+    console.error(`Error fetching issues from ${repo}: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function issueToItem(issue, slugMap) {
+  const labelNames = (issue.labels || []).map((l) => l.name);
+  const statusLabel = labelNames.find((n) => /^status:/i.test(n));
+  const status = statusLabel
+    ? STATUS_LABEL_MAP[statusLabel.slice("status:".length).toLowerCase()] ||
+      "Captured"
+    : issue.state === "CLOSED"
+      ? "Done"
+      : "Captured";
+  const priority = labelNames.find((n) => /^P[1-4]$/.test(n)) || "Unset";
+  const rawCat = (labelNames.find((n) => /^cat:/i.test(n)) || "").slice(4);
+  const cbcLabel = labelNames.find((n) => /^cbc:/i.test(n));
+  const cbcVal = cbcLabel ? parseInt(cbcLabel.slice("cbc:".length), 10) : NaN;
+  return {
+    id: `#${issue.number}`,
+    title: issue.title,
+    description: issue.body || "",
+    category: unslugCategory(rawCat, slugMap),
+    status,
+    priority,
+    tags: labelNames.filter(
+      (n) =>
+        !/^(status:|cat:|effort:|complexity:|cbc:|source:|archived$)/i.test(n) &&
+        !/^P[1-4]$/.test(n)
+    ),
+    cbc_score: Number.isFinite(cbcVal) ? cbcVal : null,
+    blocked_by: [],
+    devops_wis: [],
+    target_date: null,
+    assigned_to:
+      (issue.assignees && issue.assignees[0] && issue.assignees[0].login) ||
+      null,
+    updated: issue.updatedAt ? issue.updatedAt.slice(0, 10) : null,
+    notes: []
+  };
+}
+
+function loadFromGitHub(repo) {
+  const slugMap = buildCategorySlugMap(loadConfiguredCategories());
+  const issues = fetchGitHubIssues(repo);
+  const items = [];
+  const archived = [];
+  for (const issue of issues) {
+    const labelNames = (issue.labels || []).map((l) => l.name);
+    const isArchived = labelNames.some((n) => /^archived$/i.test(n));
+    const item = issueToItem(issue, slugMap);
+    if (isArchived) archived.push(item);
+    else items.push(item);
+  }
+  return { items, archived };
+}
+
+// ---------------------------------------------------------------------------
+// Load items
+// ---------------------------------------------------------------------------
+
+let backlogItems, archiveItems;
+
+if (BACKEND === "github") {
+  const result = loadFromGitHub(REPO);
+  backlogItems = result.items;
+  archiveItems = result.archived;
+} else {
+  const backlogData = yaml.load(fs.readFileSync(BACKLOG_FILE, "utf8"));
+  backlogItems = (backlogData && backlogData.items) || [];
+  archiveItems = [];
+  if (fs.existsSync(ARCHIVE_FILE)) {
+    const archiveData = yaml.load(fs.readFileSync(ARCHIVE_FILE, "utf8"));
+    archiveItems = (archiveData && archiveData.items) || [];
+  }
 }
 
 const allItems = [...backlogItems, ...archiveItems];

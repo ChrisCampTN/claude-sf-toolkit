@@ -69,6 +69,21 @@ CONTEXT_AREA = value after --context, or null
 
 ---
 
+## Backlog Backend Flags
+
+Determine the effective backend for backlog script calls (used by Step 4 and Context Lookup):
+
+- If `backlog.backend` in the resolved context is explicitly `"github-issues"`, OR `workTracking.backend` is `"github-actions"` and `backlog.backend` is not set:
+  - Set `BACKLOG_FLAGS = "--backend github --repo {workTracking.issueRepo}"`
+  - Item IDs are GitHub Issue numbers (`#NN`), not `BL-NNNN`
+- Otherwise:
+  - Set `BACKLOG_FLAGS = ""` (YAML default)
+  - Item IDs are `BL-NNNN`
+
+Apply `{BACKLOG_FLAGS}` verbatim to every `backlog-*.js` invocation below. In GHA mode, `--submitted-by` is still accepted (ignored by the script since GitHub uses the authenticated user). Where display text references `BL-NNNN`, substitute `#NN` in GHA mode.
+
+---
+
 ## Step 0 — Determine Release & API Version
 
 **If `--backlog-only`:** Skip this step entirely. Jump to Step 4 (Backlog-Only Mode).
@@ -287,7 +302,7 @@ For each **Adopt Now** and **Evaluate** feature, determine if it warrants a back
 1. **Check for existing backlog overlap.** For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
    ```bash
-   node scripts/backlog-search.js --text "{feature keywords}"
+   node scripts/backlog-search.js {BACKLOG_FLAGS} --text "{feature keywords}"
    ```
 
    If an existing item covers this feature, note it as an expansion candidate rather than a new item.
@@ -334,7 +349,7 @@ Wait for developer approval before writing any backlog items. For approved items
 For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
 ```bash
-node scripts/backlog-add.js --title "{title}" --description "{desc}" --category "{cat}" --effort "{effort}" --complexity "{complexity}" --tags "{tags}" --source "release-review" --submitted-by "Claude"
+node scripts/backlog-add.js {BACKLOG_FLAGS} --title "{title}" --description "{desc}" --category "{cat}" --effort "{effort}" --complexity "{complexity}" --tags "{tags}" --source "release-review" --submitted-by "Claude"
 ```
 
 For expansion candidates, use the `/backlog update` workflow.
@@ -342,7 +357,7 @@ For expansion candidates, use the `/backlog update` workflow.
 After all backlog writes, re-render:
 
 ```bash
-node scripts/backlog-render.js
+node scripts/backlog-render.js {BACKLOG_FLAGS}
 ```
 
 ---
@@ -381,7 +396,7 @@ Read `docs/release-reviews/platform.md`. Extract all features from Adopt Now, Ev
 For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
 ```bash
-node scripts/backlog-search.js --text "{area}"
+node scripts/backlog-search.js {BACKLOG_FLAGS} --text "{area}"
 ```
 
 List active backlog items related to this area.

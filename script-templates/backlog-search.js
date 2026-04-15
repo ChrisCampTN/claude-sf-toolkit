@@ -3,7 +3,7 @@
 "use strict";
 
 /**
- * backlog-search.js — Search and filter backlog items
+ * backlog-search.js — Search and filter backlog items (YAML or GitHub Issues).
  *
  * Usage:
  *   node scripts/backlog-search.js [filters...] [options]
@@ -15,11 +15,13 @@
  *   priority:X       Filter by priority
  *   assigned:X       Filter by assignee (partial match)
  *   blocked          Show only blocked items
- *   no-wi            Show items without DevOps work items
+ *   no-wi            Show items without DevOps work items (YAML source only)
  *   needs-design     Show items tagged needs-design without a design doc
  *   "free text"      Search title, description, and notes
  *
  * Options:
+ *   --backend <yaml|github> Data backend (default: yaml)
+ *   --repo <owner/repo>     GitHub repo (required when --backend github)
  *   --backlog-path <path>   Path to backlog.yaml (default: docs/backlog/backlog.yaml)
  *   --archive-path <path>   Path to archive.yaml (default: docs/backlog/archive.yaml)
  *   --json                  Output results as JSON
@@ -29,6 +31,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 const yaml = require("js-yaml");
 
 const REPO_ROOT = path.join(__dirname, "..");
@@ -52,11 +55,13 @@ if (rawArgs.includes("--help")) {
       "  priority:X       Filter by priority",
       "  assigned:X       Filter by assignee (partial match)",
       "  blocked          Show only blocked items",
-      "  no-wi            Show items without DevOps work items",
+      "  no-wi            Show items without DevOps work items (YAML source only)",
       "  needs-design     Show items tagged needs-design without a design doc",
       '  "free text"      Search title, description, and notes',
       "",
       "Options:",
+      "  --backend <yaml|github> Data backend (default: yaml)",
+      "  --repo <owner/repo>     GitHub repo (required when --backend github)",
       "  --backlog-path <path>   Path to backlog.yaml (default: docs/backlog/backlog.yaml)",
       "  --archive-path <path>   Path to archive.yaml (default: docs/backlog/archive.yaml)",
       "  --json                  Output results as JSON",
@@ -73,6 +78,8 @@ const countMode = rawArgs.includes("--count");
 
 let backlogPath = "docs/backlog/backlog.yaml";
 let archivePath = "docs/backlog/archive.yaml";
+let backend = "yaml";
+let repo = null;
 
 const filters = [];
 for (let i = 0; i < rawArgs.length; i++) {
@@ -85,7 +92,24 @@ for (let i = 0; i < rawArgs.length; i++) {
     archivePath = rawArgs[++i];
     continue;
   }
+  if (rawArgs[i] === "--backend") {
+    backend = (rawArgs[++i] || "").toLowerCase();
+    continue;
+  }
+  if (rawArgs[i] === "--repo") {
+    repo = rawArgs[++i];
+    continue;
+  }
   filters.push(rawArgs[i]);
+}
+
+if (backend !== "yaml" && backend !== "github") {
+  console.error(`Error: --backend must be 'yaml' or 'github' (got: ${backend})`);
+  process.exit(1);
+}
+if (backend === "github" && !repo) {
+  console.error("Error: --backend github requires --repo <owner/repo>");
+  process.exit(1);
 }
 
 if (filters.length === 0) {
@@ -99,13 +123,126 @@ if (filters.length === 0) {
 const BACKLOG_FILE = path.resolve(REPO_ROOT, backlogPath);
 const ARCHIVE_FILE = path.resolve(REPO_ROOT, archivePath);
 
-// Load items
-const backlogData = yaml.load(fs.readFileSync(BACKLOG_FILE, "utf8"));
-let items = [...((backlogData && backlogData.items) || [])];
+// ---------------------------------------------------------------------------
+// Category slug → display map (so GitHub-slugged categories like "UI-UX"
+// round-trip back to their configured display form like "UI/UX").
+// ---------------------------------------------------------------------------
 
-if (fs.existsSync(ARCHIVE_FILE)) {
-  const archiveData = yaml.load(fs.readFileSync(ARCHIVE_FILE, "utf8"));
-  items = items.concat((archiveData && archiveData.items) || []);
+function loadConfiguredCategories() {
+  const configPath = path.resolve(REPO_ROOT, "config/sf-toolkit.json");
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (
+      config.backlog &&
+      Array.isArray(config.backlog.categories) &&
+      config.backlog.categories.length > 0
+    ) {
+      return config.backlog.categories;
+    }
+  } catch {
+    // Config missing or invalid
+  }
+  return [];
+}
+
+function buildCategorySlugMap(categories) {
+  const map = {};
+  for (const cat of categories) {
+    map[cat.replace(/\//g, "-").toLowerCase()] = cat;
+  }
+  return map;
+}
+
+function unslugCategory(rawValue, slugMap) {
+  if (!rawValue) return "";
+  return slugMap[rawValue.toLowerCase()] || rawValue;
+}
+
+// ---------------------------------------------------------------------------
+// GitHub Issues source
+// ---------------------------------------------------------------------------
+
+const STATUS_LABEL_MAP_GH = {
+  captured: "Captured",
+  groomed: "Evaluated",
+  evaluated: "Evaluated",
+  prioritized: "Prioritized",
+  ready: "Ready",
+  "in-progress": "In Progress",
+  "in progress": "In Progress",
+  done: "Done",
+  deferred: "Deferred"
+};
+
+function fetchGitHubIssues(repoArg) {
+  try {
+    execSync("gh --version", { stdio: "ignore" });
+  } catch {
+    console.error("Error: 'gh' CLI not found. Install from https://cli.github.com/");
+    process.exit(1);
+  }
+  try {
+    const json = execSync(
+      `gh issue list --repo ${repoArg} --state all --json number,title,body,state,labels,assignees,createdAt,updatedAt --limit 200`,
+      { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }
+    );
+    return JSON.parse(json);
+  } catch (err) {
+    console.error(`Error fetching issues from ${repoArg}: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+function issueToItem(issue, slugMap) {
+  const labelNames = (issue.labels || []).map((l) => l.name);
+  const statusLabel = labelNames.find((n) => /^status:/i.test(n));
+  const status = statusLabel
+    ? STATUS_LABEL_MAP_GH[statusLabel.slice("status:".length).toLowerCase()] ||
+      "Captured"
+    : issue.state === "CLOSED"
+      ? "Done"
+      : "Captured";
+  const priority = labelNames.find((n) => /^P[1-4]$/.test(n)) || "Unset";
+  const rawCat = (labelNames.find((n) => /^cat:/i.test(n)) || "").slice(4);
+  const effortLabel = labelNames.find((n) => /^effort:/i.test(n));
+  const tags = labelNames.filter(
+    (n) =>
+      !/^(status:|cat:|effort:|complexity:|cbc:|source:|archived$)/i.test(n) &&
+      !/^P[1-4]$/.test(n)
+  );
+  return {
+    id: `#${issue.number}`,
+    title: issue.title,
+    description: issue.body || "",
+    category: unslugCategory(rawCat, slugMap),
+    status,
+    priority,
+    effort: effortLabel ? effortLabel.slice("effort:".length) : "Unset",
+    tags,
+    design_doc: null,
+    blocked_by: [],
+    devops_wis: [],
+    assigned_to:
+      (issue.assignees && issue.assignees[0] && issue.assignees[0].login) ||
+      null,
+    notes: []
+  };
+}
+
+// Load items
+let items;
+if (backend === "github") {
+  const configuredCategories = loadConfiguredCategories();
+  const slugMap = buildCategorySlugMap(configuredCategories);
+  const issues = fetchGitHubIssues(repo);
+  items = issues.map((i) => issueToItem(i, slugMap));
+} else {
+  const backlogData = yaml.load(fs.readFileSync(BACKLOG_FILE, "utf8"));
+  items = [...((backlogData && backlogData.items) || [])];
+  if (fs.existsSync(ARCHIVE_FILE)) {
+    const archiveData = yaml.load(fs.readFileSync(ARCHIVE_FILE, "utf8"));
+    items = items.concat((archiveData && archiveData.items) || []);
+  }
 }
 
 // Build filter functions (AND logic)

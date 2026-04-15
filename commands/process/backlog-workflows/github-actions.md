@@ -38,35 +38,17 @@ When creating or evaluating issues, use this body structure:
 
 **Trigger:** `/backlog` or `/backlog dashboard`
 
-1. Run: `gh issue list --repo {workTracking.issueRepo} --state open --json number,title,state,labels,assignees --limit 50`
-2. Parse the JSON output. For each issue, extract:
-   - **Priority:** label matching `P1`–`P4` (default: "Unset")
-   - **Status:** label matching `status:*` (default: state `open` → "Captured")
-   - **Effort:** label matching `effort:*` (default: "Unset")
-   - **Category:** label matching `cat:*` (default: "Uncategorized")
-   - **Assignee:** from `assignees[0].login` (default: "Unassigned")
-3. Group by status, sort by priority within each group.
-4. Display:
+Use `scripts/backlog-stats.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-stats.js`.
 
-```text
-### Backlog Dashboard (GitHub Issues)
+Run:
 
-**{n} open issues** in {workTracking.issueRepo}
-
-#### In Progress ({n})
-| # | Title | Priority | Effort | Assignee |
-|---|-------|----------|--------|----------|
-| #{number} | {title} | {priority} | {effort} | {assignee} |
-
-#### Ready ({n})
-...
-
-#### Prioritized ({n})
-...
-
-#### Captured ({n})
-...
+```bash
+node scripts/backlog-stats.js --table --backend github --repo {workTracking.issueRepo}
 ```
+
+The script fetches all issues (up to 200), maps labels to the internal item shape (priority `P*`, `status:*`, `effort:*`, `complexity:*`, `cat:*`, `cbc:*`, `source:*`), and prints a dashboard grouped by status / category / priority / CBC score. Issues with the `archived` label are counted separately.
+
+Display the script's table output verbatim to the user, then add a one-line header noting the issue repo: `**Source:** {workTracking.issueRepo}`.
 
 ---
 
@@ -79,29 +61,35 @@ When creating or evaluating issues, use this body structure:
    - **Description** (required): multi-line description of the work
    - **Category** (required): one of the categories from `context.backlog.categories`. If no categories configured, accept any value.
    - **Priority** (optional, default P3): P1 (critical), P2 (high), P3 (medium), P4 (low)
-   - **Source** (optional, default "claude"): team, stakeholder, vendor, claude
-3. Create a temporary file with the Issue body using the template above.
-4. Run:
+   - **Source** (optional, default "claude-session"): team-member, stakeholder-request, vendor-eval, claude-session
+3. Use `scripts/backlog-add.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-add.js`.
 
-```bash
-gh issue create --repo {workTracking.issueRepo} \
-  --title "{title}" \
-  --body-file {tempBodyFile} \
-  --label "status:captured" \
-  --label "cat:{category}" \
-  --label "P{n}" \
-  --label "source:{source}"
-```
+   Run:
 
-5. Parse the created issue URL/number from the output.
-6. Report:
+   ```bash
+   node scripts/backlog-add.js \
+     --backend github \
+     --repo {workTracking.issueRepo} \
+     --title "{title}" \
+     --description "{description}" \
+     --category "{category}" \
+     --priority "{P1|P2|P3|P4}" \
+     --source "{source}" \
+     [--assigned-to "{github-login}"] \
+     --json
+   ```
+
+   The script slugs `/` → `-` in the category label (so `cat:UI/UX` becomes `cat:UI-UX`), applies `status:captured` by default, and writes the issue body using the template above. Tags passed via `--tags` become labels on the issue.
+
+4. Parse the JSON output (contains `id`, `title`, `url`, etc.).
+5. Report:
 
 ```text
-### Created: #{number}
+### Created: {id}
 
 **{title}**
 Priority: {priority} | Category: {category} | Status: Captured
-URL: {issue_url}
+URL: {url}
 ```
 
 ---
@@ -110,24 +98,28 @@ URL: {issue_url}
 
 **Trigger:** `/backlog search {filters}`
 
-Parse filters:
-- Label-based filters: `cat:apex`, `P1`, `effort:L`, `status:in-progress`, `blocked` → map to `--label` flags
-- Text search: remaining text → use `gh search issues --repo {workTracking.issueRepo} "{text}"`
-- Assignee filter: `@me`, `@{name}` → map to `--assignee`
+Use `scripts/backlog-search.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-search.js`.
 
-For label-only searches:
+Run:
 
 ```bash
-gh issue list --repo {workTracking.issueRepo} --state open --label "{label1}" --label "{label2}" --json number,title,state,labels,assignees
+node scripts/backlog-search.js \
+  --backend github \
+  --repo {workTracking.issueRepo} \
+  {filter expressions...}
 ```
 
-For text searches:
+Supported filter expressions (forwarded from `/backlog search`):
+- `category:{value}` — exact match (the script un-slugs `cat:UI-UX` → `UI/UX` to match configured categories)
+- `tag:{value}` — item has this tag
+- `status:{value}` — e.g. `status:in-progress`
+- `priority:{value}` — e.g. `priority:P1`
+- `assigned:{value}` — partial match on GitHub login
+- `blocked` — items in the `blocked_by` section (rarely set via body parsing; reserved for future)
+- `needs-design` — items tagged `needs-design` without a design doc
+- Free text — substring search on title / description / body
 
-```bash
-gh search issues --repo {workTracking.issueRepo} "{text}" --json number,title,state,labels,url
-```
-
-Display results in a table format matching the dashboard layout.
+Display the script's table output. If `--count` or `--json` was requested via the sub-command, forward the flag.
 
 ---
 
@@ -397,20 +389,21 @@ gh issue edit {number} --repo {workTracking.issueRepo} --add-label "archived"
 
 **Trigger:** `/backlog render`
 
-1. Fetch all issues (open + closed):
+Use `scripts/backlog-render.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-render.js`.
+
+Run:
 
 ```bash
-gh issue list --repo {workTracking.issueRepo} --state all --json number,title,state,labels,assignees --limit 200
+node scripts/backlog-render.js \
+  --backend github \
+  --repo {workTracking.issueRepo} \
+  --output {context.backlog.path}/README.md \
+  --project-name "{project name}"
 ```
 
-2. Parse and categorize by status labels.
-3. Generate `docs/backlog/README.md` with the same format as the YAML variant:
-   - Summary statistics (total, by status, by priority)
-   - Table of active items (open issues, sorted by priority)
-   - Table of completed items (closed issues with `status:done` or merged)
-   - Table of archived items (closed with `archived` label)
+The script shells out to `gh issue list --state all` (up to 200 issues), maps labels to the internal backlog schema (priority `P*`, `status:*`, `effort:*`, `complexity:*`, `cat:*`, `cbc:*`, `source:*`), and writes the same README sections as the YAML variant: executive summary, summary table, category matrix, priority board, tags index, recently-updated. Issues with the `archived` label are routed to the archive bucket.
 
-4. Write the file and report the path.
+Report the path written (from the script's stdout).
 
 ---
 

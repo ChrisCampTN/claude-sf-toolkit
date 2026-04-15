@@ -407,143 +407,21 @@ This item will appear in `/start-day` as "Ready to start."
 
 **Trigger:** `/backlog render`
 
-Generate `{context.backlog.path}/README.md` from backlog.yaml and archive.yaml.
+Use `scripts/backlog-render.js` (default YAML source). Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-render.js`.
 
-1. Read both YAML files
-2. Build the following sections:
+Run:
 
-### Executive Summary
-
-Write 2-3 sentences for stakeholders:
-
-- How many items are in progress and what categories they cover
-- Top 3 Ready/Prioritized P1-P2 items by title
-- Any blocked items
-- Upcoming milestones (items with `target_date` in next 30 days)
-
-```markdown
-## Executive Summary
-
-{2-3 sentences}
-
-**Active workstreams:** {in-progress categories with counts}
-**Next up:** {top 3 Ready/P1-P2 items}
-**Upcoming milestones:** {items with target_date in next 30 days}
+```bash
+node scripts/backlog-render.js \
+  --backlog-path {context.backlog.path}/backlog.yaml \
+  --archive-path {context.backlog.path}/archive.yaml \
+  --output {context.backlog.path}/README.md \
+  --project-name "{project name}"
 ```
 
-### Summary Table
+The script reads both YAML files and writes a README.md containing: executive summary, summary table, category matrix, priority board, work-item cross-reference, per-category sections, tags index, recently-updated, and footer.
 
-```markdown
-## Summary
-
-| Metric                  | Count |
-| ----------------------- | ----- |
-| Total active items      | {n}   |
-| Captured (needs triage) | {n}   |
-| Evaluated               | {n}   |
-| Prioritized             | {n}   |
-| Ready                   | {n}   |
-| In Progress             | {n}   |
-| Archived (historical)   | {n}   |
-```
-
-### By Category Matrix
-
-Generate a row for each category found in the data:
-
-```markdown
-### By Category
-
-| Category     | Total | P1  | P2  | P3  | P4  | Unset |
-| ------------ | ----- | --- | --- | --- | --- | ----- |
-| {category}   | ...   |
-...
-```
-
-### Priority Board
-
-For each priority tier (P1 through P4, then Unset), generate a table:
-
-```markdown
-## Priority Board
-
-### P1 -- Critical
-
-| ID  | Title | Category | Status | Effort | Complexity | Assigned | WIs | Design Doc |
-| --- | ----- | -------- | ------ | ------ | ---------- | -------- | --- | ---------- |
-
-...
-```
-
-### Work Item Cross-Reference
-
-Reverse lookup table: given a WI, find the backlog item.
-
-```markdown
-## Work Item Cross-Reference
-
-| WI        | Backlog | Title | Status | Category |
-| --------- | ------- | ----- | ------ | -------- |
-| WI-NNNNNN | BL-NNNN | ...   | ...    | ...      |
-
-...
-```
-
-Build by iterating all items with non-empty `devops_wis`, flattening to one row per WI. Sort by WI number.
-
-### By Category Sections
-
-For each category found in the data:
-
-```markdown
-## By Category
-
-### {Category} ({n} items)
-
-| ID  | Title | Status | Priority | Effort | Tags | Design Doc |
-| --- | ----- | ------ | -------- | ------ | ---- | ---------- |
-
-...
-```
-
-### Tags Index
-
-```markdown
-## Tags Index
-
-| Tag        | Count | Items                 |
-| ---------- | ----- | --------------------- |
-| {tag}      | {n}   | BL-NNNN, BL-NNNN, ... |
-
-...
-```
-
-### Recently Updated
-
-Items updated in last 7 days:
-
-```markdown
-## Recently Updated (last 7 days)
-
-| ID  | Title | Updated | Change |
-| --- | ----- | ------- | ------ |
-
-...
-```
-
-"Change" = summary of the latest note text (truncated to 60 chars).
-
-### Footer
-
-```markdown
----
-
-> Auto-generated from `backlog.yaml` by `/backlog render` on {date}. Do not edit manually.
-> {n} items archived. See `archive.yaml` for history.
-```
-
-3. Write `{context.backlog.path}/README.md`
-4. Report: "Rendered `{context.backlog.path}/README.md` -- {n} active items, {n} archived."
+Report the path written (from the script's stdout).
 
 ---
 

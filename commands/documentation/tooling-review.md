@@ -67,6 +67,21 @@ Report the resolved mode:
 
 ---
 
+## Backlog Backend Flags
+
+Determine the effective backend for backlog script calls:
+
+- If `backlog.backend` in the resolved context is explicitly `"github-issues"`, OR `workTracking.backend` is `"github-actions"` and `backlog.backend` is not set:
+  - Set `BACKLOG_FLAGS = "--backend github --repo {workTracking.issueRepo}"`
+  - Item IDs are GitHub Issue numbers (`#NN`), not `BL-NNNN`
+- Otherwise:
+  - Set `BACKLOG_FLAGS = ""` (YAML default)
+  - Item IDs are `BL-NNNN`
+
+Apply `{BACKLOG_FLAGS}` verbatim to every `backlog-*.js` invocation below. In GHA mode, `--submitted-by` is still accepted (ignored by the script since GitHub uses the authenticated user).
+
+---
+
 ## Weekly Review (Default Mode) — Steps 0-5
 
 ### Step 0 — Check Versions
@@ -253,7 +268,7 @@ For each **Adopt Now** and **Evaluate** feature from Step 3:
    For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
    ```bash
-   node scripts/backlog-search.js --text "{feature keywords}"
+   node scripts/backlog-search.js {BACKLOG_FLAGS} --text "{feature keywords}"
    ```
 
    If an existing item covers this feature, note it as an expansion candidate rather than a new item.
@@ -302,7 +317,7 @@ For each **Adopt Now** and **Evaluate** feature from Step 3:
    For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
    ```bash
-   node scripts/backlog-add.js --title "{title}" --description "{desc}" --category "{cat}" --effort "{effort}" --complexity "{complexity}" --tags "{tags}" --source "tooling-review" --submitted-by "Claude"
+   node scripts/backlog-add.js {BACKLOG_FLAGS} --title "{title}" --description "{desc}" --category "{cat}" --effort "{effort}" --complexity "{complexity}" --tags "{tags}" --source "tooling-review" --submitted-by "Claude"
    ```
 
 5. **Re-render backlog:**
@@ -310,10 +325,10 @@ For each **Adopt Now** and **Evaluate** feature from Step 3:
    For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
    ```bash
-   node scripts/backlog-render.js
+   node scripts/backlog-render.js {BACKLOG_FLAGS}
    ```
 
-6. **Update report** — add "Backlog proposed: BL-NNNN" line to the version's Recent Changes entry.
+6. **Update report** — add "Backlog proposed: {id}" line to the version's Recent Changes entry (where `{id}` is `BL-NNNN` in YAML mode or `#NN` in GHA mode).
 
 If no features warrant backlog items, report:
 
@@ -451,7 +466,7 @@ Review the available `mcp__Salesforce-DX__*` tools from the deferred tool list. 
 For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
 ```bash
-node scripts/backlog-search.js --text "{area}"
+node scripts/backlog-search.js {BACKLOG_FLAGS} --text "{area}"
 ```
 
 List active backlog items related to this area.
