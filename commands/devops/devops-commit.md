@@ -418,8 +418,8 @@ Current branch: {original branch}
 
 Before offering promotion, check whether `/validate-build` has been completed for this work item:
 
-1. Look for a `.validation-session.json` in the project root. If it exists, check if it references the current WI number and has a `status` of `"complete"` with no `FAIL` verdicts.
-2. Alternatively, check the backlog item's notes (via `devops_wis` mapping) for a "validate-build: PASS" entry.
+1. Look for `.last-validate-build` in the project root. If it exists, read the line — format is `{date}|{WI-or-issue}|{summary}`. Check that the WI/issue reference matches the current work item and the date is today (stale validations from prior days should re-run).
+2. If the file is missing, has a different WI/issue, or is from a prior day — treat as not validated.
 
 **If validation has NOT been completed:**
 
