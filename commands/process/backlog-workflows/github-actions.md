@@ -159,8 +159,11 @@ gh issue view {number} --repo {workTracking.issueRepo} --json number,title,body,
 ```bash
 gh issue edit {number} --repo {workTracking.issueRepo} \
   --add-label "effort:{effort}" \
-  --add-label "complexity:{complexity}"
+  --add-label "complexity:{complexity}" \
+  --add-label "cbc:{score}"
 ```
+
+If the issue already has a `cbc:*` label from a prior evaluation, remove it first before adding the new one.
 
 Update the issue body by reading current body, replacing the `**CBC Score:** .../5` line with the new score, and writing back:
 

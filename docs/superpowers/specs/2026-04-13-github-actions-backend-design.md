@@ -249,6 +249,7 @@ Labels carry queryable metadata (priority, effort, complexity, status, category)
 - Status: `status:captured`, `status:groomed`, `status:prioritized`, `status:in-progress`, `status:deferred`
 - Category: `cat:{name}` for each entry in `config.backlog.categories`
 - Source: `source:team`, `source:stakeholder`, `source:vendor`, `source:claude`
+- CBC: `cbc:1`, `cbc:2`, `cbc:3`, `cbc:4`, `cbc:5`
 - Dependency: `blocked`
 
 ## Validation & Testing

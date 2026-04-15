@@ -164,6 +164,13 @@ Write the file:
    gh label create "source:vendor" --description "Vendor evaluation" --color "BFD4F2" --force
    gh label create "source:claude" --description "Claude session submission" --color "BFD4F2" --force
 
+   # CBC (Claude Build Confidence)
+   gh label create "cbc:1" --description "CBC 1 — vague idea" --color "F9D0C4" --force
+   gh label create "cbc:2" --description "CBC 2 — concept defined, unknowns remain" --color "F9D0C4" --force
+   gh label create "cbc:3" --description "CBC 3 — requirements clear, some open questions" --color "FBCA04" --force
+   gh label create "cbc:4" --description "CBC 4 — well-specified, minor decisions" --color "0E8A16" --force
+   gh label create "cbc:5" --description "CBC 5 — fully specified, ready to build" --color "0E8A16" --force
+
    # Dependencies
    gh label create "blocked" --description "Blocked by another item" --color "B60205" --force
    gh label create "archived" --description "Archived backlog item" --color "EEEEEE" --force
