@@ -10,6 +10,23 @@ The parent skill (`/backlog`) handles argument parsing and resolution before del
 
 **Issue repo:** `{workTracking.issueRepo}`
 
+## Label naming conventions
+
+The labels created by `commands/setup.md` use these forms — match them when emitting `--add-label` in manual `gh issue edit` flows:
+
+| Class      | Label form                                                                                          | Note                                                                                                                                                       |
+| ---------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status     | `status:captured`, `status:groomed`, `status:prioritized`, `status:in-progress`, `status:deferred`  | **Lowercase**, hyphenated. Canonical value (e.g., "Captured") must be lowercased + hyphenated before emitting.                                             |
+| Priority   | `P1`, `P2`, `P3`, `P4`                                                                              | No prefix; uppercase letter + digit.                                                                                                                       |
+| Effort     | `effort:XS`, `effort:S`, `effort:M`, `effort:L`, `effort:XL`                                        | Uppercase letter. Match canonical value directly.                                                                                                          |
+| Complexity | `complexity:low`, `complexity:med`, `complexity:high`                                               | **Lowercase**. Canonical "Low/Med/High" must be lowercased before emitting.                                                                                |
+| Source     | `source:team`, `source:stakeholder`, `source:vendor`, `source:claude`                               | **Short form**. Map canonical `team-member` → `team`, `stakeholder-request` → `stakeholder`, `vendor-eval` → `vendor`, `claude-session` → `claude`.        |
+| Category   | `cat:<slug>`                                                                                        | `/` replaced with `-` (e.g., `cat:UI-UX`).                                                                                                                 |
+| CBC        | `cbc:1`–`cbc:5`                                                                                     | Numeric.                                                                                                                                                   |
+| Archived   | `archived`                                                                                          | Bare label, no prefix.                                                                                                                                     |
+
+`scripts/backlog-add.js` translates canonical → label form automatically when writing. The manual `gh issue edit` flows below (evaluate, update) must apply the same normalization themselves before passing values to `--add-label`.
+
 ---
 
 ## Issue Body Template

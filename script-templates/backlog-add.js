@@ -68,6 +68,21 @@ const VALID_SOURCES = [
   "claude-session"
 ];
 
+// Translate canonical source values (YAML backend convention) to the
+// GitHub label short-forms created by commands/setup.md. Without this,
+// the script emits `source:claude-session` but the repo only has
+// `source:claude`, causing `gh issue create` to fail label lookup.
+const SOURCE_LABEL_MAP = {
+  "team-member": "team",
+  "stakeholder-request": "stakeholder",
+  "vendor-eval": "vendor",
+  "claude-session": "claude"
+};
+
+function sourceToLabel(source) {
+  return SOURCE_LABEL_MAP[source] || source;
+}
+
 // ---------------------------------------------------------------------------
 // Argument parsing
 // ---------------------------------------------------------------------------
@@ -274,11 +289,11 @@ function addToGitHub(args, repo) {
   const labels = [
     `status:${status}`,
     `cat:${slugForLabel(args.category)}`,
-    `source:${slugForLabel(source)}`
+    `source:${sourceToLabel(source)}`
   ];
   if (priority !== "Unset") labels.push(priority);
   if (effort !== "Unset") labels.push(`effort:${effort}`);
-  if (complexity !== "Unset") labels.push(`complexity:${complexity}`);
+  if (complexity !== "Unset") labels.push(`complexity:${complexity.toLowerCase()}`);
   for (const t of tags) labels.push(t);
 
   const body = buildIssueBody({
