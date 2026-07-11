@@ -283,7 +283,7 @@ If the resolved context contains `workTracking.deployManagedEnvs` and the target
 
 If the user chooses option 1, restart Step 5 with the local env alias. If they choose option 3, stop the skill. If they choose option 2, proceed with a warning banner in the deploy output.
 
-If `workTracking.deployManagedEnvs` is empty or missing, skip this check entirely (DOC mode — all envs are local).
+If `workTracking.deployManagedEnvs` is empty or missing, skip this check entirely.
 
 ### Grouping strategy:
 
@@ -457,15 +457,10 @@ After a successful (non-dry-run) deploy:
 
    Next steps:
    - Commit these changes using /commit-commands:commit
-
-   **If `workTracking.backend` == `"devops-center"`:**
-   - Associate with work item: /devops-commit {WI-NNNNNN} {sha}
-
-   **If `workTracking.backend` == `"github-actions"`:**
    - Push your branch and open a PR: `git push && gh pr create --title "..." --body "Fixes #NN"`
    ```
 
-5. **Suggest commit message** based on the deployed files — follow the patterns from recent commits (WI/Issue prefix if applicable, descriptive summary).
+5. **Suggest commit message** based on the deployed files — follow the patterns from recent commits (Issue prefix if applicable, descriptive summary).
 
 ---
 

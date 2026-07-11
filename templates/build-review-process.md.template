@@ -162,7 +162,7 @@ TEAM NOTES:
 
 3. **Warnings touching FLS & Sharing are treated as failures.** Security findings are never advisory.
 
-4. **Save incomplete reports to main.** If a session ends before the build is complete, commit the partial build report as `docs/build-notes/WI-NNNNNN.md` on main (this is repo-only docs, not `force-app/` metadata). The next session reads this file first to resume context. **Never commit non-metadata files to WI branches** — DevOps Center tracks every file that appears in a WI branch commit, and non-deployable files pollute the changeset.
+4. **Save incomplete reports to main.** If a session ends before the build is complete, commit the partial build report as `docs/build-notes/issue-NN.md` on main (this is repo-only docs, not `force-app/` metadata). The next session reads this file first to resume context. Keep non-metadata files off metadata feature branches — mixed changesets make PR review and delta deploys harder to reason about.
 
 ---
 
@@ -190,7 +190,7 @@ Apply before issuing any mid-build correction, fix pass instruction, or spec mod
 1. Is every instruction unambiguous? Could Claude interpret it two valid ways?
 2. For any callout or async flow — are fault paths, retry, and user feedback specified?
 3. Could this change affect components outside the stated WI scope?
-4. Does this contradict anything already built and committed on the WI branch?
+4. Does this contradict anything already built and committed on the feature branch?
 5. Should a test (FlowTest, Apex test, or flow scanner rule) be added or modified?
 ```
 
@@ -209,7 +209,7 @@ Apply before issuing any mid-build correction, fix pass instruction, or spec mod
 
 ## 6. Quality Gate at Graduation
 
-`/backlog graduate` creates DevOps Center work items from backlog items. Before graduation, the following must be verified:
+`/backlog graduate` activates a backlog Issue to in-progress. Before graduation, the following must be verified:
 
 ### Architecture Checklist
 
@@ -287,11 +287,11 @@ The build report's TEAM NOTES section is the mechanism for team members to flag 
 ### Per-Session Checklist
 
 1. **Start:** `/skill-preflight` validates pre-conditions
-2. **Build:** Follow the review mode for this WI's build mode (Section 2)
+2. **Build:** Follow the review mode for this Issue's build mode (Section 2)
 3. **Report:** Produce the build report (Section 3)
 4. **Review:** Team member reviews. GATE STATUS must be confirmed.
 5. **Fix (if needed):** One fix pass maximum. Apply five-question check to fix instructions.
-6. **Handoff:** If incomplete, save build notes to main. If complete, proceed to `/devops-commit`.
+6. **Handoff:** If incomplete, save build notes to main. If complete, commit to the feature branch and open a PR.
 
 ### Relationship to Existing Skills
 
@@ -299,7 +299,7 @@ The build report's TEAM NOTES section is the mechanism for team members to flag 
 | ------------------ | -------------------------------------------------------------------------------- |
 | `/skill-preflight` | Runs before the build. Validates pre-conditions (git, org, metadata).            |
 | `/deploy-changed`  | Runs after GATE STATUS = PASS. Deploys the reviewed artifacts.                   |
-| `/devops-commit`   | Runs after successful deploy. Associates the commit with the WI.                 |
+| Commit + PR        | Runs after successful deploy. Feature-branch commit referencing the Issue, then `gh pr create`. |
 | `/test-flows`      | Generates FlowTests during agent-driven builds. Part of test coverage dimension. |
 | `/platform-review` | Quarterly deep review. Catches drift that per-session review misses.             |
 | `/wrap-up`         | End-of-session. Reviews TEAM NOTES for feedback patterns.                        |

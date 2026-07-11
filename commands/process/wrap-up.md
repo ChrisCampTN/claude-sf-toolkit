@@ -1,11 +1,11 @@
 ---
 name: wrap-up
-description: End-of-session checklist — commit outstanding work, check docs staleness, maintain memory, sync WI status
+description: End-of-session checklist — commit outstanding work, check docs staleness, maintain memory, check Issue status
 ---
 
 # /wrap-up — End-of-Session Wrap-Up
 
-Run through the standard end-of-conversation checklist: commit outstanding work, check for stale docs, maintain memory, and surface reminders. **Execute-first** — perform actions directly and report results. Only pause on errors, conflicts, or ambiguous WI assignment.
+Run through the standard end-of-conversation checklist: commit outstanding work, check for stale docs, maintain memory, and surface reminders. **Execute-first** — perform actions directly and report results. Only pause on errors, conflicts, or ambiguous session scope.
 
 ## Resolution
 
@@ -27,7 +27,7 @@ Arguments can be:
 - `--review` — run `code-review:code-review` on session changes before committing (Step 2B)
 - `--skip-memory` — skip the memory maintenance step
 - `--skip-readme` — skip the README staleness check
-- `--skip-wi-sync` — skip the WI status sync step
+- `--skip-status-check` — skip the Issue status check step
 
 ---
 
@@ -38,7 +38,7 @@ Parse `$ARGUMENTS` once and resolve flags before entering any step:
 - `runReview` = true if `--review` is present
 - `skipReadme` = true if `--skip-readme` is present
 - `skipMemory` = true if `--skip-memory` is present
-- `skipWiSync` = true if `--skip-wi-sync` is present
+- `skipStatusCheck` = true if `--skip-status-check` is present
 
 Steps check these resolved flags and skip entirely if set, reporting `[SKIP] {step} skipped ({flag}).`
 
@@ -103,13 +103,13 @@ Scan the conversation for:
 
 Read `MEMORY.md` and scan for memories that this session's work may have obsoleted:
 
-- Work item status changes (e.g., a WI moved from "Not Started" to "Done")
+- Issue status changes (e.g., an Issue moved from "in progress" to "done")
 - Tooling decisions that were revisited
 - Error patterns that were resolved
 
 ### Execute
 
-Create/update/remove memory files and update MEMORY.md directly. Report what changed:
+Create/update/remove memory files and update MEMORY.md directly. **Before adding index lines, run `wc -l .claude/memory/MEMORY.md`** — the harness loads only the first 200 lines (25KB) at session start, so if the addition would push past ~195 lines, route it to a topical sub-index (`index_*.md`) instead. Report what changed:
 
 ```text
 ### Memory Maintenance
@@ -167,31 +167,15 @@ Split current-session changes into two commit routes:
 
 | Category            | How to identify                                                   | Commit route                                                                                                |
 | ------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Repo-only files** | `docs/**/*.md`, `.claude/commands/*.md`, `CLAUDE.md`, `README.md` | Commit on **main** (DOC mode) or **feature branch** (GHA mode), push to origin |
-| **SF metadata**     | `force-app/**` (flow XMLs, objects, fields, etc.)                 | See backend-specific rules below |
+| **Repo-only files** | `docs/**/*.md`, `.claude/commands/*.md`, `CLAUDE.md`, `README.md` | Commit on the **feature branch**, push to origin |
+| **SF metadata**     | `force-app/**` (flow XMLs, objects, fields, etc.)                 | Commit on the **feature branch**, push to origin |
 | **Skill files**     | `.claude/commands/*.md`                                           | Same as repo-only, but remind: `/skill-preflight` should run before committing modified skills |
 
-**If `workTracking.backend` == `"devops-center"`:**
-
-SF metadata changes (`force-app/`) are source-tracked by DevOps Center and must go through the promotion pipeline (dev sandbox → Staging → Production). Committing them to main would bypass the pipeline. Repo-only files (docs, skills, memory) are not deployed to Salesforce and can live on main directly.
-
-**If `workTracking.backend` == `"github-actions"`:**
-
-All changes (repo-only AND SF metadata) go on the **feature branch** (`feature/issue-{id}-{slug}`). There is no WI branch split — the feature branch IS the work unit. Commit everything together and push. GitHub Actions handles validation on PR and deployment on merge.
+All changes (repo-only AND SF metadata) go on the **feature branch** (`feature/issue-{id}-{slug}`) — the feature branch is the work unit. Commit everything together and push. GitHub Actions handles validation on PR and deployment on merge.
 
 ### 3c — Execute Commits
 
 Execute directly — no confirmation prompt:
-
-**If `workTracking.backend` == `"devops-center"`:**
-
-1. **Main commit first:** Stage repo-only files and commit using `/commit-commands:commit`. **NEVER stage `force-app/` files on main** — SF metadata must only be committed to WI branches. DevOps Center merges WI branches back to main after promotion.
-2. **WI branch commit via `/devops-commit`:** If there are `force-app/` changes and a WI number is known, invoke `/devops-commit WI-NNNNNN` which handles: stashing, checking out the WI branch, committing only `force-app/` files, pushing, deploying to the dev sandbox, and returning to main.
-3. **Return to main:** If `/devops-commit` was used, it handles the return automatically. Pop stash to restore any remaining uncommitted work from prior sessions.
-
-**Pause only if:** no WI branch exists (user must create via DevOps Center UI), merge conflict, or ambiguous WI assignment for `force-app/` files.
-
-**If `workTracking.backend` == `"github-actions"`:**
 
 1. **Single commit on feature branch:** Stage all changes (repo-only + `force-app/`) and commit using `/commit-commands:commit`. All files belong on the feature branch together.
 2. **Push:** `git push` the feature branch to origin.
@@ -200,18 +184,6 @@ Execute directly — no confirmation prompt:
 
 Report results:
 
-**DOC mode:**
-```text
-### Commits
-
-**main:** {short hash} — {message} (pushed to origin)
-**WI-{number}:** {short hash} — {message} (pushed + deployed to dev sandbox)
-
-**Prior session changes (not committed):**
-- {n} files from other sessions still uncommitted
-```
-
-**GHA mode:**
 ```text
 ### Commits
 
@@ -250,66 +222,11 @@ git rev-list --count origin/main..main
 [OK] Local main is up to date with origin.
 ```
 
-### Also check for stale work branches (DOC mode only)
-
-**If `workTracking.backend` == `"devops-center"`:**
-
-WI branches may have been pushed to origin in prior sessions but never deployed to the dev sandbox. Without deployment, DevOps Center cannot promote them.
-
-```bash
-git branch -r | grep 'origin/WI-'
-```
-
-For each WI branch, check if it has `force-app/` changes vs main:
-
-```bash
-git diff --name-only origin/main..origin/{WI-branch} -- 'force-app/'
-```
-
-If any WI branches have undeployed metadata, report them. **Do not deploy prior-session WI branches automatically** — they are out of scope for this session. Flag them so the user has visibility:
-
-```text
-### WI Branches with Undeployed Metadata (prior sessions)
-
-| Branch | Metadata files | Status |
-|---|---|---|
-| WI-{number} | {n} flow XMLs, {n} objects, ... | Pushed to origin, deploy status unknown |
-
-Deploy these in their respective sessions or manually via:
-sf project deploy start --target-org {context.orgs.devAlias} --source-dir {paths}
-```
-
-**Note:** Only deploy `force-app/` files — never deploy docs, skills, or CLAUDE.md to the org.
-
-**If `workTracking.backend` == `"github-actions"`:**
-
-Skip this check — GHA mode has no WI branches. Feature branches are managed through PRs.
-
 ---
 
-## Step 5 — Work Item / Issue Status Check
+## Step 5 — Issue Status Check
 
-If `skipWiSync` is set, report `[SKIP] Status check skipped (--skip-wi-sync).` and move to Step 6.
-
-**If `workTracking.backend` == `"devops-center"`:**
-
-Run `/wi-sync` (full sync — updates MEMORY.md) to reconcile live DevOps Center status against the WI tables in MEMORY.md. The sync queries `{context.orgs.productionAlias}` for current WI status.
-
-If the org query fails (unreachable, auth expired), log the failure and continue — do not block the wrap-up.
-
-This runs **after** commits and push (Steps 3–4) so any WIs deployed this session are reflected in the live status before memory is updated.
-
-Report the sync result inline:
-
-```text
-### WI Sync
-
-{n} rows updated, {n} discrepancies flagged, {n} skipped (manual review).
-```
-
-If zero changes: `[OK] MEMORY.md WI tables are current.`
-
-**If `workTracking.backend` == `"github-actions"`:**
+If `skipStatusCheck` is set, report `[SKIP] Status check skipped (--skip-status-check).` and move to Step 6.
 
 Query current Issue status directly (no sync needed — Issues are always live):
 
@@ -358,7 +275,7 @@ If a lookback is warranted, note it but do not run it. Suggest: `Run /lookback t
 
 - **Execute-first.** Commit, push, and deploy current-session work without asking. Only pause on errors, conflicts, or ambiguous scope.
 - **Current session only.** Never commit, push, or deploy work from prior sessions. Report prior-session leftovers for visibility but leave them untouched.
-- **One org query per wrap-up.** Step 5 queries `{context.orgs.productionAlias}` for WI status. All other checks are local git commands and file reads.
+- **No org queries.** Step 5 queries GitHub (`gh`) for Issue status. All other checks are local git commands and file reads.
 - **No lookback.** Retrospectives are not run automatically — they affect shared feedback memories and require intentional review. Surface lookback candidates in Step 6 but leave execution to the developer via `/lookback`.
 - **Respect `--skip-*` flags.** Skip the indicated steps entirely.
 - This skill can be invoked at any point, not just end-of-session. It's safe to run mid-conversation as a checkpoint.

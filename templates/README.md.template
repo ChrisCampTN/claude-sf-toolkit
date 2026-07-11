@@ -48,11 +48,11 @@ See [coding-standards.md](docs/coding-standards.md) for full development standar
 ```mermaid
 graph LR
     A[Local Source] -->|deploy| B[Dev Sandbox]
-    B -->|DevOps Center| C[Staging]
-    C -->|Promote| D[Production]
+    B -->|PR merge / GitHub Actions| C[Staging]
+    C -->|Manual dispatch| D[Production]
 ```
 
-All metadata changes go through DevOps Center. Never deploy directly to production.
+All metadata changes go through pull requests + GitHub Actions. Never deploy directly to production.
 
 ## Key Commands
 

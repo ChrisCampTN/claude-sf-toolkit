@@ -1,6 +1,6 @@
 ---
 description: >
-  Use this agent when a skill needs Salesforce project context (org aliases, API version, DevOps Center IDs, team mapping). Every SF Toolkit skill dispatches this agent unless a valid cache exists.
+  Use this agent when a skill needs Salesforce project context (org aliases, API version, GitHub repo, team mapping). Every SF Toolkit skill dispatches this agent unless a valid cache exists.
 
   <example>
   Context: A skill like /deploy-changed needs to know the target org alias and API version.
@@ -24,7 +24,7 @@ tools: ["Read", "Bash", "Grep", "Glob", "Write", "mcp__Salesforce-DX__run_soql_q
 
 ## Your Job
 
-Resolve all project configuration needed by SF Toolkit skills. Read native Salesforce project files, query the org for DevOps Center IDs, and return a structured context object.
+Resolve all project configuration needed by SF Toolkit skills. Read native Salesforce project files, derive the GitHub repo context, and return a structured context object.
 
 **Cache behavior:** After resolving, write the result to `.claude/sf-toolkit-cache.json` so that future skill invocations (even across sessions) can read the cache directly and skip this agent entirely. The cache includes an expiration timestamp based on `cache.ttlHours` in `config/sf-toolkit.json` (default: 24 hours).
 
@@ -50,7 +50,6 @@ Resolve all project configuration needed by SF Toolkit skills. Read native Sales
    - Check `_cache.expiresAt` — if it is **after** the current date/time, the cache is still valid.
    - Check `_cache.pluginVersion` — read `${CLAUDE_PLUGIN_ROOT}/package.json` → `version`. If it differs from the cached value, the cache is stale (plugin was updated).
    - Read `.sf/config.json` and compare its `target-org` value against `orgs.devAlias` in the cache. If they differ, the cache is stale (org was switched).
-   - Check if `devops.backend` in `config/sf-toolkit.json` differs from `workTracking.backend` in the cached context. If they differ, the cache is stale (the user switched DevOps backends).
    - If all checks pass: **return the cached context** (all keys except `_cache`) immediately. Do not proceed to further steps.
 3. If the file is missing, expired, or the org alias doesn't match — proceed to Step 1 for a full resolve.
 
@@ -60,21 +59,14 @@ Resolve all project configuration needed by SF Toolkit skills. Read native Sales
 
 2. **Read `sfdx-project.json`** — extract `sourceApiVersion` and first `packageDirectories[].path`.
 
-3. **Read `config/sf-toolkit.json`** — extract team mapping, searchKeywords, searchKeywordsLastReviewed, backlog.backend, and devops block (devops.backend, devops.environments). If file doesn't exist, add to missing array. If the `devops` key is missing, default to `{ "backend": "devops-center", "environments": { "local": ["dev"], "managed": [] } }`.
+3. **Read `config/sf-toolkit.json`** — extract team mapping, searchKeywords, searchKeywordsLastReviewed, backlog.backend, and devops block (devops.environments). If file doesn't exist, add to missing array. If the `devops` key is missing, default to `{ "backend": "github-actions", "environments": { "local": ["dev"], "managed": [] } }`.
 
 4. **Read `.env`** — extract SF_USER_ID. If missing, add to missing array with `canAutoResolve: true`.
 
 5. **Resolve display name** — look up current git user email in team mapping. If found, use the mapped name. If not found, use git config user.name.
 
-6. **Query DevOps Center OR derive GitHub context** (based on `devops.backend`):
+6. **Derive GitHub context:**
 
-   **If `devops.backend` == `"devops-center"` (or missing):**
-   - `SELECT Id, Name FROM DevopsProject` — if exactly one result, use it. If multiple, include all and flag for skill to prompt selection. If zero or query fails, add to missing array.
-   - `SELECT Id, Name FROM DevopsPipeline` — same logic.
-   - `SELECT Id, Name, EnvironmentType FROM DevopsEnvironment` — return all as name→id map.
-
-   **If `devops.backend` == `"github-actions"`:**
-   - Skip all DevOps Center SOQL queries. Set `devopsCenter: null`.
    - Derive `issueRepo` from `git remote get-url origin`:
      - HTTPS format: `https://github.com/{owner}/{repo}.git` → extract `{owner}/{repo}`
      - SSH format: `git@github.com:{owner}/{repo}.git` → extract `{owner}/{repo}`
@@ -117,11 +109,10 @@ After compiling the full context object, write it to `.claude/sf-toolkit-cache.j
        "resolvedAt": "...",
        "expiresAt": "...",
        "ttlHours": 24,
-       "pluginVersion": "1.4.0",
+       "pluginVersion": "2.0.0",
        "sourceFiles": { ".sf/config.json": "...", ... }
      },
      "orgs": { ... },
-     "devopsCenter": { "projectId": "...", "pipelineId": "...", "environments": { ... } },
      "workTracking": { ... },
      ...rest of context
    }
@@ -129,28 +120,6 @@ After compiling the full context object, write it to `.claude/sf-toolkit-cache.j
 6. Write the file using: `node -e "fs.writeFileSync('.claude/sf-toolkit-cache.json', JSON.stringify(data, null, 2))"`
 
 ### `workTracking` block
-
-Populate based on `devops.backend`:
-
-**If `devops.backend` == `"devops-center"` (or missing):**
-
-```json
-"workTracking": {
-  "backend": "devops-center",
-  "branchPattern": "WI-{id}",
-  "idPrefix": "WI-",
-  "idPattern": "WI-\\d{6}",
-  "listActiveCmd": null,
-  "listAllCmd": null,
-  "viewItemCmd": null,
-  "createItemCmd": null,
-  "deployManagedEnvs": [],
-  "deployLocalEnvs": ["dev", "staging", "production"],
-  "disabledSkills": []
-}
-```
-
-**If `devops.backend` == `"github-actions"`:**
 
 ```json
 "workTracking": {
@@ -165,13 +134,13 @@ Populate based on `devops.backend`:
   "createItemCmd": "gh issue create --repo {issueRepo} --title \"{title}\" --body-file {bodyFile}",
   "deployManagedEnvs": ["{values from devops.environments.managed}"],
   "deployLocalEnvs": ["{values from devops.environments.local}"],
-  "disabledSkills": ["devops-commit", "wi-sync"]
+  "disabledSkills": []
 }
 ```
 
 Replace `{issueRepo}` with the value derived in step 6. Replace `{values from ...}` with the arrays from `devops.environments` in config.
 
-**Implicit backlog coupling:** If `devops.backend` == `"github-actions"` AND `backlog.backend` is NOT explicitly set to `"yaml"` or `"salesforce"` in the config, set `backlog.backend` to `"github-issues"` in the cache output.
+**Implicit backlog coupling:** If `backlog.backend` is NOT explicitly set to `"yaml"` or `"salesforce"` in the config, set `backlog.backend` to `"github-issues"` in the cache output.
 
 ---
 
@@ -202,16 +171,8 @@ Return a single JSON code block with this exact schema:
     "backend": "yaml|salesforce|github-issues",
     "path": "docs/backlog"
   },
-  "devopsCenter": {
-    "projectId": "{id or null}",
-    "projectName": "{name or null}",
-    "pipelineId": "{id or null}",
-    "environments": {
-      "{name}": "{id}"
-    }
-  },
   "workTracking": {
-    "backend": "devops-center|github-actions",
+    "backend": "github-actions",
     "issueRepo": "{owner/repo or null}",
     "branchPattern": "{pattern}",
     "idPrefix": "{prefix}",
@@ -234,8 +195,7 @@ Return a single JSON code block with this exact schema:
 - No hardcoded org names, IDs, or project-specific values
 - Read files for all context — never assume values
 - If a file is missing or a query fails, add to missing array — don't fail the agent
-- DevOps Center queries go against the production org (target-dev-hub), never the dev sandbox
-- If .sf/config.json is missing entirely, add both target-org and target-dev-hub to missing array and skip SOQL queries
+- If .sf/config.json is missing entirely, add both target-org and target-dev-hub to missing array
 - Always write the cache file after a fresh resolve, even if there are missing values — partial context is still cacheable
 - If the cache file write fails (e.g., permissions), log a warning but still return the resolved context normally
 - The `.claude/sf-toolkit-cache.json` file should be gitignored — do not commit it

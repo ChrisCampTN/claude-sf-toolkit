@@ -21,14 +21,12 @@ Display all skills organized by group with one-line descriptions:
 ```
 SF TOOLKIT — Skill Reference
 
-SF DevOps (7):
+SF DevOps (5):
   /deploy-changed    Build and execute targeted SF deployments from git changes
-  /devops-commit     Cherry-pick workflow for DevOps Center work item association
   /detect-drift      Compare org metadata against local git source
   /validate-build    Interactive post-build validation against design spec
   /package-audit     Installed managed package dependency audit
   /test-flows        Native FlowTest metadata generator for record-triggered flows
-  /wi-sync           Sync DevOps Center WI status against MEMORY.md
 
 Documentation (7):
   /release-review    Salesforce release note analysis and backlog item proposals
@@ -59,7 +57,7 @@ Check each group directory (`commands/devops/`, `commands/documentation/`, `comm
 ## Mode: Skill Detail (skill name argument)
 
 1. Determine which group the skill belongs to:
-   - `deploy-changed`, `devops-commit`, `detect-drift`, `validate-build`, `package-audit`, `test-flows`, `wi-sync` → `commands/devops/`
+   - `deploy-changed`, `detect-drift`, `validate-build`, `package-audit`, `test-flows` → `commands/devops/`
    - `release-review`, `doc-flows`, `doc-components`, `platform-review`, `tooling-review`, `claude-review`, `design-review` → `commands/documentation/`
    - `backlog`, `start-day`, `wrap-up`, `skill-preflight`, `lookback` → `commands/process/`
    - `setup`, `help` → `commands/`
@@ -87,7 +85,7 @@ Check each group directory (`commands/devops/`, `commands/documentation/`, `comm
 
    Chains with:
      Before: /skill-preflight deploy-changed
-     After:  /devops-commit (associate deploy with work item)
+     After:  commit, push, and open a PR (gh pr create)
 
    Example:
      /deploy-changed
@@ -141,7 +139,7 @@ Setting up a new Salesforce DX project with the SF Toolkit:
    - Resolve your SF_USER_ID
    - Generate docs/platform-brief.md from your org
    - Scaffold CLAUDE.md and README.md from templates
-   - Verify org connectivity and DevOps Center
+   - Verify org connectivity and GitHub access
 
 8. Customize your scaffolded files:
    - docs/coding-standards.md — adjust naming conventions, test targets
@@ -151,7 +149,6 @@ Setting up a new Salesforce DX project with the SF Toolkit:
    /start-day          — plan your session
    /backlog add        — capture work items
    /deploy-changed     — deploy your changes
-   /devops-commit      — associate with DevOps Center WI
    /wrap-up            — end your session cleanly
 ```
 
@@ -169,13 +166,13 @@ AUTO-RESOLVED (no config needed):
   API version           sfdx-project.json → sourceApiVersion
   Metadata path         sfdx-project.json → packageDirectories[0].path
   SF User ID            .env → SF_USER_ID (auto-resolved on first /setup)
-  DevOps Center IDs     SOQL at runtime against production
+  GitHub Issue repo     git remote get-url origin (parsed at runtime)
   Flow categories       docs/flows/flow-categories.json (built by /doc-flows)
 
 MANUAL CONFIG (config/sf-toolkit.json):
   team                  Email → display name mapping for all team members
   searchKeywords        Keywords for /release-review and /tooling-review
-  backlog.backend       "yaml" (file-based) or "salesforce" (custom object)
+  backlog.backend       "github-issues" (default), "yaml", or "salesforce"
   cache.ttlHours        Resolver cache lifetime in hours (default: 24)
 
 CACHE (.claude/sf-toolkit-cache.json — gitignored):
@@ -203,13 +200,13 @@ BUILD CYCLE:
   /skill-preflight {skill}  → validate pre-conditions
   [build work]              → write code/metadata
   /deploy-changed           → deploy to dev sandbox
-  /devops-commit            → associate commit with WI
+  [commit + PR]             → push branch, gh pr create
 
 DRIFT RECOVERY:
   /detect-drift             → find org changes not in source
   [retrieve changes]        → pull into local source
   /deploy-changed           → push to dev sandbox
-  /devops-commit            → track with work item
+  [commit + PR]             → push branch, gh pr create
 
 DOCUMENTATION:
   /doc-flows                → document flows (first-run: categorize)
@@ -218,7 +215,7 @@ DOCUMENTATION:
 PLANNING:
   /backlog add              → capture new work
   /backlog evaluate         → assess priority/effort
-  /backlog graduate         → create DevOps Center WI
+  /backlog graduate         → activate item to in-progress
     → /design-review        → validate design doc (auto-called)
 
 REVIEW:
@@ -233,6 +230,5 @@ SESSION END:
 
 HEALTH CHECK:
   /setup --check            → project dependency status
-  /wi-sync                  → sync WI status from DevOps Center
   /package-audit            → managed package health
 ```

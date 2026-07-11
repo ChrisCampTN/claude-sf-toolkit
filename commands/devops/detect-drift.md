@@ -5,7 +5,7 @@ description: Compare org metadata against local git source to find components mo
 
 # /detect-drift — Detect Org Metadata Drift
 
-Compare metadata in a Salesforce org against local git source to find components modified directly in the org (outside the managed deployment pipeline — DevOps Center or GitHub Actions). Produces a drift report and offers targeted retrieval.
+Compare metadata in a Salesforce org against local git source to find components modified directly in the org (outside the GitHub Actions deployment pipeline). Produces a drift report and offers targeted retrieval.
 
 **Arguments:** `$ARGUMENTS`
 
@@ -364,11 +364,6 @@ Retrieved {n} components from {target-org}.
 1. Review the changes: `git diff {context.metadataPath}/flows/`
 2. Stage and commit: `git add {files} && git commit -m "Retrieve org drift: {summary}"`
 3. Deploy to dev sandbox: `/deploy-changed`
-
-**If `workTracking.backend` == `"devops-center"`:**
-4. Associate with work item: `/devops-commit WI-NNNNNN`
-
-**If `workTracking.backend` == `"github-actions"`:**
 4. Create an Issue and PR:
    ```
    gh issue create --title "Fix drift: {summary}" --label "bug"

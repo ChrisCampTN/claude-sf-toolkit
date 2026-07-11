@@ -17,12 +17,12 @@ const SUPERSEDED_SKILLS = [
   "skill-preflight.md",
   "lookback.md",
   "deploy-changed.md",
-  "devops-commit.md",
+  "devops-commit.md", // retired in v2.0.0 (DevOps Center removed) — still cleaned up from legacy projects
   "detect-drift.md",
   "validate-build.md",
   "package-audit.md",
   "test-flows.md",
-  "wi-sync.md",
+  "wi-sync.md", // retired in v2.0.0 (DevOps Center removed) — still cleaned up from legacy projects
   "release-review.md",
   "doc-flows.md",
   "doc-components.md",

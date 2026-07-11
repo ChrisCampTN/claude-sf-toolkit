@@ -34,11 +34,11 @@
 - **Metadata path:** Read from `sfdx-project.json` → `packageDirectories[0].path`
 - **API version:** Read from `sfdx-project.json` → `sourceApiVersion` (always match Production — run `sf org display --target-org {production} --json` to verify)
 - **Source format:** SFDX
-- After every successful deployment, commit against the mapped DevOps Center work item.
-- Never deploy directly to production. All work goes through dev sandbox → DevOps Center promotion.
+- After every successful deployment, commit to a feature branch and open a PR (reference the GitHub Issue).
+- Never deploy directly to production. All work goes through dev sandbox → feature branch → PR → GitHub Actions deploys.
 - {{ORG_SPECIFIC_DEVOPS_NOTES}}
-- **Exception — Org-level settings metadata:** Some metadata types are not source-tracked and won't appear in DevOps Center change detection. These may be deployed directly to production via `sf project deploy start --target-org {production}` after a dry-run validation. Always deploy to dev sandbox first, then production. Known org-level types requiring direct deploy: `DataCategoryGroup`, `DataCategoryVisibility`. Create a DevOps Center work item for tracking even though the deploy bypasses the pipeline.
-- **Git hooks are active.** Pre-commit runs `lint-staged` (Prettier formatting) and **blocks `force-app/` commits on main** — metadata must go to WI branches via `/devops-commit`. Override with `ALLOW_FORCEAPP_ON_MAIN=1` for emergencies only. Post-commit detects flow changes, queues them for `/doc-flows`, and sends a Slack notification. Requires a `.env` file at repo root with `SLACK_WEBHOOK_URL`.
+- **Exception — Org-level settings metadata:** Some metadata types are not source-tracked and won't flow through pipeline deltas. These may be deployed directly to production via `sf project deploy start --target-org {production}` after a dry-run validation. Always deploy to dev sandbox first, then production. Known org-level types requiring direct deploy: `DataCategoryGroup`, `DataCategoryVisibility`. Create a GitHub Issue for tracking even though the deploy bypasses the pipeline.
+- **Git hooks are active.** Pre-commit runs `lint-staged` (Prettier formatting) and **blocks `force-app/` commits on main** — metadata must go to feature branches and merge via PR. Override with `ALLOW_FORCEAPP_ON_MAIN=1` for emergencies only. Post-commit detects flow changes, queues them for `/doc-flows`, and sends a Slack notification. Requires a `.env` file at repo root with `SLACK_WEBHOOK_URL`.
 - **`[docs-only]` commit prefix** — Commits that only update flow `<description>` fields (no logic changes) should use the `[docs-only]` prefix. The post-commit hook will still queue changed flows to `.pending-docs.txt` but skip the Slack notification.
 
 ## Key Commands
@@ -101,13 +101,13 @@ The official Salesforce-maintained MCP server (`@salesforce/mcp`). Consolidates 
 - Retrieve and deploy metadata without leaving VS Code or Claude Desktop
 - Execute Anonymous Apex for logic testing and data verification
 - Inspect object schema: describe objects, list fields, picklist values, relationships
-- Manage DevOps Center work items, commits, and promotions
+- Inspect deployment status and metadata coverage
 - Run Apex static analysis (code analyzer, antipattern scanning)
 - Manage users and permission sets
 
 **Enabled toolsets:** `data`, `metadata`, `orgs`, `testing`, `users`, `code-analysis`, `devops`, `scale-products`
 
-> **Guardrail: SF CLI MCP must only target the dev sandbox. Never configure it against Staging or Production. Staging and Production deployments are always human-initiated through DevOps Center.**
+> **Guardrail: SF CLI MCP must only target the dev sandbox. Never configure it against Staging or Production. Staging and Production deployments always go through GitHub Actions.**
 
 ### Filesystem MCP Server
 
@@ -140,12 +140,12 @@ Skills are provided by the `claude-sf-toolkit` plugin. Run `/help` for the full 
 
 | Group          | Skills                                                                              |
 | -------------- | ----------------------------------------------------------------------------------- |
-| SF DevOps      | `/deploy-changed`, `/devops-commit`, `/detect-drift`, `/validate-build`, `/package-audit`, `/test-flows`, `/wi-sync` |
+| SF DevOps      | `/deploy-changed`, `/detect-drift`, `/validate-build`, `/package-audit`, `/test-flows`                              |
 | Documentation  | `/release-review`, `/doc-flows`, `/doc-components`, `/platform-review`, `/tooling-review`, `/design-review` |
 | Process        | `/backlog`, `/start-day`, `/wrap-up`, `/skill-preflight`, `/lookback`               |
 | Meta           | `/setup`, `/help`                                                                   |
 
-**Skill chaining:** `/start-day` opens the session with a prioritized plan from memory, git, calendar, email, and Slack. `/deploy-changed` deploys metadata and suggests a commit. `/devops-commit` cherry-picks that commit onto the WI branch. `/skill-preflight` validates before any of them run (called with a skill name, it maps to the relevant check suites automatically). `/detect-drift` finds org changes → retrieve → `/deploy-changed` pushes to dev sandbox → `/devops-commit` associates with a work item. `/wrap-up` runs at end-of-session to catch uncommitted work and surface maintenance tasks. `/backlog` manages the planning layer upstream of DevOps Center. `/backlog graduate` invokes `/design-review BL-NNNN` as a graduation gate — design doc must pass accuracy review before WI creation proceeds.
+**Skill chaining:** `/start-day` opens the session with a prioritized plan from memory, git, calendar, email, and Slack. `/deploy-changed` deploys metadata and suggests a feature-branch commit + PR. `/skill-preflight` validates before any of them run (called with a skill name, it maps to the relevant check suites automatically). `/detect-drift` finds org changes → retrieve → `/deploy-changed` pushes to dev sandbox → commit + PR. `/wrap-up` runs at end-of-session to catch uncommitted work and surface maintenance tasks. `/backlog` manages the planning layer of GitHub Issues. `/backlog graduate` invokes `/design-review #NN` as a graduation gate — design doc must pass accuracy review before activation to in-progress.
 
 {{DATA_MODEL_SUMMARY}}
 

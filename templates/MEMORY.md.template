@@ -1,6 +1,7 @@
 # {{PROJECT_NAME}} — Shared Project Memory
 
-> **This file is repo-tracked and shared by the whole team.** It is the canonical source for project state, WI status, feedback patterns, and team context. When writing `project`, `feedback`, or `reference` type memories, write to this directory (`.claude/memory/`) and update this index. Personal memories (timezone, machine-specific preferences) go in your local `~/.claude/projects/.../memory/` instead.
+> **This file is repo-tracked and shared by the whole team.** It is the canonical source for project state, Issue status, feedback patterns, and team context.
+> **Hard cap: 200 lines / 25KB.** The harness loads only the first 200 lines at session start — content past the cap is silently dropped. Keep this file as an index (one line per memory); route detail to memory files and topical sub-indexes (`index_*.md`). When writing `project`, `feedback`, or `reference` type memories, write to this directory (`.claude/memory/`) and update this index. Personal memories (timezone, machine-specific preferences) go in your local `~/.claude/projects/.../memory/` instead.
 
 ## Project Summary
 
@@ -11,17 +12,16 @@
 <!-- Link to feedback memories as they accumulate -->
 <!-- Example: - [Configuration First, Best Solution Wins](.claude/memory/feedback_configuration_first.md) — Hybrid solutions encouraged -->
 
-## Active Work Items
+## Active Issues
 
-> Execution-level tracking for in-flight DevOps Center WIs. Auto-cleaned by `/wi-sync` when promoted/closed.
-> Full backlog: `docs/backlog/backlog.yaml`
+> Execution-level tracking for in-flight GitHub Issues. Auto-cleaned by `/wrap-up` when merged/closed.
 
-| WI | Name | Backlog | Assigned | Status | Notes |
-|----|------|---------|----------|--------|-------|
+| Issue | Name | Assigned | Status | Notes |
+|-------|------|----------|--------|-------|
 
 ## Backlog
 
-Upstream backlog: `docs/backlog/backlog.yaml`. Manage with `/backlog`. Rendered: `docs/backlog/README.md`.
+Backlog lives in GitHub Issues (label-encoded status/priority). Manage with `/backlog`. Rendered: `docs/backlog/README.md`.
 
 ## Git Conventions
 

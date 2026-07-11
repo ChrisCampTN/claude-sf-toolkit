@@ -185,7 +185,7 @@ All {n} flows in scope are unchanged since their last documentation date. No doc
 No downstream artifacts were generated.
 ```
 
-Do **not** create a work item or Issue (skip Step 13), do **not** update indexes, and do **not** modify any XML descriptions.
+Do **not** create an Issue (skip Step 13), do **not** update indexes, and do **not** modify any XML descriptions.
 
 ---
 
@@ -524,7 +524,7 @@ Format for each row:
 
 ## Step 10 — XML Descriptions (SKIPPED by default)
 
-**By default, XML `<description>` updates are handled during the commit workflow** (DOC mode: `/devops-commit` syncs descriptions when committing to WI branches; GHA mode: descriptions are committed with the feature branch). The sync uses `scripts/flow-description-sync.js` to copy the Purpose from the markdown doc into the flow XML.
+**By default, XML `<description>` updates are handled during the commit workflow** — descriptions are committed with the feature branch. The sync uses `scripts/flow-description-sync.js` to copy the Purpose from the markdown doc into the flow XML.
 
 `/doc-flows` no longer modifies `{context.metadataPath}/` files. It only writes markdown documentation and updates indexes on `main`.
 
@@ -607,11 +607,11 @@ After completing all flows, output a summary:
 Next steps:
 1. Commit docs to main: `git add docs/flows/ && git commit -m "[docs-only] Document {category} flows"`
 2. Run `/kb-gap-analysis` to identify Knowledge Base gaps based on the new documentation.
-3. XML descriptions will sync automatically when flow logic is next committed via `/devops-commit`.
+3. XML descriptions will sync automatically when flow logic is next committed on a feature branch.
 ```
 
 ---
 
 ## Step 13 — REMOVED (no longer needed)
 
-XML description updates are handled by `/devops-commit` — they go into the same WI as the logic change. `/doc-flows` only writes markdown docs and indexes to `main`, which don't require a WI.
+XML description updates are handled during the feature-branch commit workflow — they go into the same branch as the logic change. `/doc-flows` only writes markdown docs and indexes to `main`, which don't require an Issue.

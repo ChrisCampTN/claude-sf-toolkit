@@ -1,6 +1,6 @@
 # Claude SF Toolkit
 
-A Claude Code plugin that packages reusable Salesforce DX skills, agent prompts, script templates, git hooks, and project scaffolding. Near-zero configuration — resolves org aliases, API versions, and DevOps Center IDs from native Salesforce project files and runtime SOQL queries.
+A Claude Code plugin that packages reusable Salesforce DX skills, agent prompts, script templates, git hooks, and project scaffolding. Near-zero configuration — resolves org aliases, API versions, and the GitHub repo from native Salesforce project files and the git remote.
 
 ## Prerequisites
 
@@ -53,23 +53,21 @@ This will walk you through:
 3. Resolving your `SF_USER_ID` from the org
 4. Generating `docs/platform-brief.md` from live org queries
 5. Scaffolding `CLAUDE.md` and `README.md` from templates
-6. Verifying org connectivity and DevOps Center
+6. Verifying org connectivity and GitHub access
 
 Run `/setup --check` anytime for a project health report.
 
 ## Skills Reference
 
-### SF DevOps (7)
+### SF DevOps (5)
 
 | Skill | Description | Key Parameters |
 |-------|-------------|----------------|
 | `/deploy-changed` | Build and execute targeted SF deployments from git changes | `--target-org`, `--dry-run` |
-| `/devops-commit` | Cherry-pick workflow for DevOps Center work item association | `--deploy-org` |
 | `/detect-drift` | Compare org metadata against local git source | `--target-org` |
-| `/validate-build` | Interactive post-build validation against design spec | `BL-NNNN` or `WI-NNNNNN`, `--section` |
+| `/validate-build` | Interactive post-build validation against design spec | `BL-NNNN` or `#NN`, `--section` |
 | `/package-audit` | Installed managed package dependency audit | `--target-org` |
 | `/test-flows` | Native FlowTest metadata generator for record-triggered flows | `--target-org` |
-| `/wi-sync` | Sync DevOps Center WI status against MEMORY.md | `--dry-run` |
 
 ### Documentation (7)
 
@@ -111,7 +109,7 @@ Run `/setup --check` anytime for a project health report.
 | API version | `sfdx-project.json` | `sourceApiVersion` field |
 | Metadata path | `sfdx-project.json` | `packageDirectories[0].path` |
 | SF User ID | `.env` | `SF_USER_ID` — auto-resolved on first `/setup` |
-| DevOps Center IDs | SOQL at runtime | Queries against production |
+| GitHub Issue repo | `git remote get-url origin` | Parsed at runtime |
 | Flow categories | `docs/flows/flow-categories.json` | Built by `/doc-flows` interactive first-run |
 
 ### Manual Config (`config/sf-toolkit.json`)
@@ -146,10 +144,10 @@ Every skill invocation starts with the **resolver agent** (`sf-toolkit-resolve`)
 2. Reads `sfdx-project.json` for API version and metadata path
 3. Reads `config/sf-toolkit.json` for team and backlog config
 4. Reads `.env` for user ID and webhook
-5. Queries DevOps Center (production) for project/pipeline/environment IDs
+5. Derives the GitHub Issue repo from the git remote
 6. Returns a structured context object consumed by all skills
 
-Results are cached per session — SOQL queries only run once.
+Results are cached to disk — the resolver only re-runs when the cache expires.
 
 ## First-Run Behaviors
 
@@ -165,8 +163,8 @@ Common workflows:
 
 ```
 Session start:     /start-day
-Build cycle:       /skill-preflight → [build] → /deploy-changed → /devops-commit
-Drift recovery:    /detect-drift → [retrieve] → /deploy-changed → /devops-commit
+Build cycle:       /skill-preflight → [build] → /deploy-changed → [commit + PR]
+Drift recovery:    /detect-drift → [retrieve] → /deploy-changed → [commit + PR]
 Planning:          /backlog add → /backlog evaluate → /backlog graduate → /design-review
 Review:            /platform-review, /release-review, /tooling-review
 Session end:       /wrap-up
@@ -196,8 +194,6 @@ Project scaffolding templates in `templates/`:
 | `platform-brief.md.template` | Org metadata brief (auto-populated by agent) |
 | `build-review-process.md.template` | Build session review discipline |
 | `coding-standards.md.template` | SF declarative + Apex development standards |
-| `backlog.yaml` | Empty backlog with schema documentation |
-| `tags.yaml` | Empty tag list for backlog items |
 | `sf-toolkit.json` | Empty plugin config |
 
 ## Updating
@@ -216,9 +212,9 @@ Skills, agents, and templates update automatically. Project files (`config/sf-to
 |-------|-----|
 | Skills not appearing | Run `claude plugin list` to verify installation |
 | Org connection fails | Run `sf org login web --alias {alias}` to re-authenticate |
-| DevOps Center queries fail | Ensure `target-dev-hub` points to production (DevOps Center lives there) |
+| GitHub queries fail | Run `gh auth login` to authenticate the GitHub CLI |
 | MCP server not connecting | Check `cmd /c` wrapper on Windows (see CLAUDE.md template) |
-| `force-app/` commit blocked | Use `/devops-commit` for WI branches, or `ALLOW_FORCEAPP_ON_MAIN=1` |
+| `force-app/` commit blocked | Commit on a feature branch, or `ALLOW_FORCEAPP_ON_MAIN=1` |
 | Missing SF_USER_ID | Run `/setup` — it auto-resolves from the org |
 | Flow scanner not found | Run `sf plugins install lightning-flow-scanner` |
 

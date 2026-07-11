@@ -210,6 +210,7 @@ const STALE_PATTERNS = [
   { pattern: /claude plugin path/g, label: 'claude plugin path (should be ${CLAUDE_PLUGIN_ROOT})' },
   { pattern: /\$\(dirname.*realpath/g, label: "$(dirname...realpath...) fragile path pattern" },
   { pattern: /Dispatch the `sf-toolkit-resolve` agent\. Use the returned/g, label: "old resolver dispatch pattern" },
+  { pattern: /DevOps Center|devops-center|\/devops-commit|\/wi-sync/g, label: "DevOps Center reference (support removed in v2.0.0)" },
 ];
 
 const scanDirs = ["commands", "agents"];
@@ -302,65 +303,39 @@ if (hooksData) {
   }
 }
 
-// ─── Check 9: Backlog variant pair completeness ──────────────────────────────
+// ─── Check 9: Backlog workflow file ──────────────────────────────────────────
 
-console.log("\n9. Backlog workflow variant pairs");
+console.log("\n9. Backlog workflow file");
 
 const variantDir = path.join(ROOT, "commands", "process", "backlog-workflows");
 if (fs.existsSync(variantDir)) {
   const ghaVariant = path.join(variantDir, "github-actions.md");
   const docVariant = path.join(variantDir, "devops-center.md");
 
-  const ghaExists = fs.existsSync(ghaVariant);
-  const docExists = fs.existsSync(docVariant);
-
-  if (ghaExists && docExists) {
-    pass("Both variant files exist");
-
-    // Check that both implement the same sub-commands
-    const subCmdPattern = /## Sub-command: `(\w+)`/g;
-    const ghaContent = fs.readFileSync(ghaVariant, "utf8");
-    const docContent = fs.readFileSync(docVariant, "utf8");
-
-    const ghaSubs = [...ghaContent.matchAll(subCmdPattern)].map((m) => m[1]).sort();
-    const docSubs = [...docContent.matchAll(subCmdPattern)].map((m) => m[1]).sort();
-
-    // GHA may have extra sub-commands (e.g., migrate) that DOC doesn't need
-    const missingInGha = docSubs.filter((s) => !ghaSubs.includes(s));
-    if (missingInGha.length === 0) {
-      pass("GHA variant implements all DOC sub-commands");
-    } else {
-      fail(`GHA variant missing sub-commands from DOC: ${missingInGha.join(", ")}`);
-    }
-  } else if (ghaExists && !docExists) {
-    fail("github-actions.md exists but devops-center.md is missing");
-  } else if (!ghaExists && docExists) {
-    fail("devops-center.md exists but github-actions.md is missing");
+  if (fs.existsSync(docVariant)) {
+    fail("devops-center.md still exists — DevOps Center support was removed in v2.0.0");
+  }
+  if (fs.existsSync(ghaVariant)) {
+    pass("github-actions.md exists");
   } else {
-    pass("No variant files yet (both absent — OK)");
+    fail("github-actions.md is missing");
   }
 } else {
   pass("No backlog-workflows directory yet (OK)");
 }
 
-// ─── Check 10: disabledSkills consistency ────────────────────────────────────
+// ─── Check 10: Removed DevOps Center skills stay removed ─────────────────────
 
-console.log("\n10. Disabled skills have backend check guards");
+console.log("\n10. Removed DevOps Center skills");
 
-const DISABLED_IN_GHA = ["devops-commit", "wi-sync"];
-const backendCheckMarker = "Backend Check";
+const REMOVED_SKILLS = ["devops-commit", "wi-sync"];
 
-for (const skillName of DISABLED_IN_GHA) {
+for (const skillName of REMOVED_SKILLS) {
   const skillFile = allCommands.find((f) => path.basename(f, ".md") === skillName);
-  if (!skillFile) {
-    fail(`${skillName}.md — file not found`);
-    continue;
-  }
-  const content = fs.readFileSync(skillFile, "utf8");
-  if (content.includes(backendCheckMarker)) {
-    pass(`${skillName}.md has backend check guard`);
+  if (skillFile) {
+    fail(`${skillName}.md — still present (DevOps Center skills were removed in v2.0.0)`);
   } else {
-    fail(`${skillName}.md — listed in disabledSkills but missing "${backendCheckMarker}" section`);
+    pass(`${skillName}.md — removed`);
   }
 }
 

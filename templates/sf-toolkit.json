@@ -7,7 +7,7 @@
     "categories": []
   },
   "devops": {
-    "backend": "devops-center",
+    "backend": "github-actions",
     "environments": {
       "local": ["dev"],
       "managed": []

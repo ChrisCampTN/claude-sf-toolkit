@@ -70,7 +70,7 @@ function assertEqual(actual, expected, label) {
 
 // ─── workTracking validation ───────────────────────────────────────────────
 
-const VALID_BACKENDS = ["devops-center", "github-actions"];
+const VALID_BACKENDS = ["github-actions"];
 const WORK_TRACKING_REQUIRED = [
   "backend",
   "branchPattern",
@@ -315,21 +315,6 @@ test("detects removed source file", () => {
 
 console.log("\n  workTracking schema:");
 
-test("valid DOC workTracking has required fields", () => {
-  const wt = {
-    backend: "devops-center",
-    branchPattern: "WI-{id}",
-    idPrefix: "WI-",
-    idPattern: "WI-\\d{6}",
-    listActiveCmd: null,
-    deployManagedEnvs: [],
-    deployLocalEnvs: ["dev", "staging", "production"],
-    disabledSkills: [],
-  };
-  const result = validateWorkTracking(wt);
-  assert(result.valid, "DOC workTracking should be valid: " + result.error);
-});
-
 test("valid GHA workTracking has required fields", () => {
   const wt = {
     backend: "github-actions",
@@ -343,16 +328,31 @@ test("valid GHA workTracking has required fields", () => {
     createItemCmd: 'gh issue create --repo owner/repo --title "{title}" --body-file {bodyFile}',
     deployManagedEnvs: ["staging", "production"],
     deployLocalEnvs: ["dev"],
-    disabledSkills: ["devops-commit", "wi-sync"],
+    disabledSkills: [],
   };
   const result = validateWorkTracking(wt);
   assert(result.valid, "GHA workTracking should be valid: " + result.error);
 });
 
 test("workTracking missing backend fails", () => {
-  const wt = { branchPattern: "WI-{id}", idPrefix: "WI-", idPattern: "WI-\\d{6}" };
+  const wt = { branchPattern: "feature/issue-{id}-{slug}", idPrefix: "#", idPattern: "#\\d+" };
   const result = validateWorkTracking(wt);
   assert(!result.valid, "Missing backend should fail");
+});
+
+test("workTracking with retired devops-center backend fails", () => {
+  const wt = {
+    backend: "devops-center",
+    branchPattern: "WI-{id}",
+    idPrefix: "WI-",
+    idPattern: "WI-\\d{6}",
+    listActiveCmd: null,
+    deployManagedEnvs: [],
+    deployLocalEnvs: ["dev", "staging", "production"],
+    disabledSkills: [],
+  };
+  const result = validateWorkTracking(wt);
+  assert(!result.valid, "Retired devops-center backend should fail");
 });
 
 test("workTracking with unknown backend fails", () => {
@@ -386,11 +386,12 @@ test("GHA workTracking missing issueRepo fails", () => {
 
 test("workTracking missing deployManagedEnvs fails", () => {
   const wt = {
-    backend: "devops-center",
-    branchPattern: "WI-{id}",
-    idPrefix: "WI-",
-    idPattern: "WI-\\d{6}",
-    listActiveCmd: null,
+    backend: "github-actions",
+    issueRepo: "owner/repo",
+    branchPattern: "feature/issue-{id}-{slug}",
+    idPrefix: "#",
+    idPattern: "#\\d+",
+    listActiveCmd: "gh issue list --repo owner/repo --state open --json number,title,state,labels,assignees",
     deployLocalEnvs: ["dev"],
     disabledSkills: [],
   };

@@ -1,11 +1,11 @@
 ---
 name: backlog
-description: Upstream backlog management — add, evaluate, prioritize, graduate, search, render. YAML, Salesforce, or GitHub Issues backend.
+description: Upstream backlog management — add, evaluate, graduate, search, render. GitHub Issues backend.
 ---
 
 # /backlog — Backlog Management
 
-Manage the upstream backlog — add, evaluate, prioritize, graduate, search, and render. The backlog is the **single source of truth** for the full work lifecycle, from initial capture through completion. Work items (DevOps Center) or Issues (GitHub) are the execution mechanism for In Progress and Done stages.
+Manage the upstream backlog — add, evaluate, graduate, search, and render. The backlog is the **single source of truth** for the full work lifecycle, from initial capture through completion. GitHub Issues are the execution mechanism for In Progress and Done stages.
 
 **Arguments:** $ARGUMENTS
 
@@ -13,13 +13,12 @@ Arguments can be:
 
 - Empty or `dashboard` — show dashboard (default)
 - `add` — interactive add via AskUserQuestion
-- `evaluate BL-NNNN` — triage an item (set effort, complexity, priority, tags)
-- `prioritize [category]` — review and reorder priorities
-- `graduate BL-NNNN` or `graduate #NN` — verify scoped + assigned, link work item/activate issue, set Ready
+- `evaluate #NN` — triage an item (set effort, complexity, priority, tags). Prioritization is folded into evaluation — there is no separate `prioritize` subcommand.
+- `graduate #NN` — verify scoped + assigned, activate issue, set In Progress
 - `search {filters}` — filter items by category, tag, status, assignee, or free text
-- `update BL-NNNN` — edit fields on an existing item
-- `archive` — move Done items to archive.yaml
-- `render` — regenerate README.md from the backlog source (YAML or GitHub Issues, depending on backend)
+- `update #NN` — edit fields on an existing item
+- `archive #NN` — close the issue with the `archived` label
+- `render` — regenerate README.md from GitHub Issues
 
 ---
 
@@ -41,102 +40,56 @@ Use the returned context for all org references, team lookups, and path resoluti
 
 Parse `$ARGUMENTS` once:
 
-- `subcommand` = first word (dashboard/add/evaluate/prioritize/graduate/search/update/archive/render). Default: `dashboard`
-- `item_id` = `BL-NNNN` pattern if present (for evaluate, graduate, update)
-- `category` = category name after `prioritize` if present. Categories are project-specific — read CLAUDE.md or `docs/platform-brief.md` for valid category names. If no categories are defined, accept any category and suggest the user define them in CLAUDE.md.
+- `subcommand` = first word (dashboard/add/evaluate/graduate/search/update/archive/render). Default: `dashboard`
+- `item_id` = `#NN` issue number if present (for evaluate, graduate, update, archive)
 - `filters` = remaining text after `search`
 
 ---
 
 ## Backlog Backend
 
-Check `context.backlog.backend`:
+GitHub Issues is the only backlog backend (as of v2.0.0 — the YAML and Salesforce backends were removed). Items live as Issues in `{workTracking.issueRepo}` from the resolved context, with fields encoded as labels (`status:*`, `cat:*`, `effort:*`, `complexity:*`, `cbc:*`, `source:*`, `P*`, `tag:*`).
 
-- `"yaml"` — use file-based operations (scripts, YAML files). This is the default.
-- `"salesforce"` — Salesforce backend is planned for a future release. Fall back to yaml and notify the user.
-
-All file paths below are relative to the project root. The backlog directory is at `context.backlog.path` (default: `docs/backlog`).
-
----
-
-## Key Files
-
-| File                                          | Purpose                                        |
-| --------------------------------------------- | ---------------------------------------------- |
-| `{context.backlog.path}/backlog.yaml`         | Source of truth — all active backlog items     |
-| `{context.backlog.path}/archive.yaml`         | Completed items (moved by archive or migrated) |
-| `{context.backlog.path}/tags.yaml`            | Controlled tag list (SSOT)                     |
-| `{context.backlog.path}/README.md`            | Auto-generated readable view                   |
+The auto-generated readable view is written to `{context.backlog.path}/README.md` (default backlog directory: `docs/backlog`), relative to the project root.
 
 ## Scripts
 
-Use these scripts for data manipulation instead of manually parsing/writing YAML. They handle validation, formatting, and cross-references.
+Use these scripts for data access and creation instead of hand-rolling `gh` queries. They shell out to `gh issue list/create` and map label-encoded fields to a consistent internal item shape.
 
 For each script below, check for a local copy in `scripts/` first. If not found, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/` to `scripts/`.
 
-All four read/write scripts accept `--backend yaml` (default) or `--backend github --repo {owner/repo}`. In GHA mode, they shell out to `gh issue list/create/edit` and map label-encoded fields (`status:*`, `cat:*`, `effort:*`, `P*`, etc.) to the same internal item shape used for YAML.
+All scripts require `--repo {workTracking.issueRepo}` (from the resolved context).
 
-| Script                        | Purpose                                  | Usage                                                                     |
-| ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------- |
-| `scripts/backlog-render.js`   | Generate README.md (YAML or Issues)      | `node scripts/backlog-render.js [--backend github --repo OWNER/REPO]`     |
-| `scripts/backlog-validate.js` | Validate schema, tags, cross-refs (YAML) | `node scripts/backlog-validate.js [--fix]` *(YAML-only)*                  |
-| `scripts/backlog-stats.js`    | Dashboard stats as JSON or table         | `node scripts/backlog-stats.js [--table] [--backend github --repo ...]`   |
-| `scripts/backlog-add.js`      | Add new item / create GitHub Issue       | `node scripts/backlog-add.js --title "..." --category Platform [options]` |
-| `scripts/backlog-search.js`   | Filter items by category/tag/status/text | `node scripts/backlog-search.js tag:lwc [--json\|--count] [--backend ...]`|
+| Script                        | Purpose                                  | Usage                                                                                    |
+| ----------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `scripts/backlog-render.js`   | Generate README.md from Issues           | `node scripts/backlog-render.js --repo OWNER/REPO [--output PATH] [--project-name NAME]` |
+| `scripts/backlog-stats.js`    | Dashboard stats as JSON or table         | `node scripts/backlog-stats.js --repo OWNER/REPO [--table]`                               |
+| `scripts/backlog-add.js`      | Create a new item as a GitHub Issue      | `node scripts/backlog-add.js --repo OWNER/REPO --title "..." --category Platform [options]` |
+| `scripts/backlog-search.js`   | Filter items by category/tag/status/text | `node scripts/backlog-search.js --repo OWNER/REPO tag:lwc [--json\|--count]`              |
 
-**When to use scripts vs. manual YAML editing:**
+**When to use scripts vs. direct `gh` commands:**
 
-- **Adding items:** Always use `backlog-add.js` — handles ID generation, tag validation, YAML formatting (YAML mode) or label slugging and issue creation (GHA mode)
-- **Rendering:** Always use `backlog-render.js` — produces consistent README.md from either source
-- **Dashboard/search:** Use `backlog-stats.js` and `backlog-search.js` — faster than parsing YAML/JSON in-context
-- **Evaluating/updating/graduating:** Read data with scripts for context, but edit fields directly (scripts don't cover all status transitions yet)
-- **Validation:** Run `backlog-validate.js` after any manual YAML edit (no GHA equivalent — GitHub doesn't enforce a schema)
+- **Adding items:** Always use `backlog-add.js` — handles label slugging, source/complexity label normalization, and issue body templating
+- **Rendering:** Always use `backlog-render.js` — produces consistent README.md
+- **Dashboard/search:** Use `backlog-stats.js` and `backlog-search.js` — faster than parsing JSON in-context
+- **Evaluating/updating/graduating:** Read data with scripts for context, but edit labels/body via `gh issue edit` (scripts don't cover all status transitions yet)
 
-**Finding the GHA repo:** when calling these scripts from a skill in GHA mode, pass `--backend github --repo {workTracking.issueRepo}` (from the resolved context).
-
-## YAML Schema Reference
-
-```yaml
-- id: "BL-NNNN"
-  title: "..."
-  description: "..."
-  category: "{project-specific category}" # read valid categories from CLAUDE.md or docs/platform-brief.md
-  status: Captured | Evaluated | Prioritized | Ready | In Progress | Done | Deferred
-  priority: P1 | P2 | P3 | P4 | Unset
-  effort: S | M | L | XL | Unset
-  complexity: Low | Med | High | Unset
-  cbc_score: 1 | 2 | 3 | 4 | 5 | null # Claude Build Confidence — see below
-  tags: [] # validated against tags.yaml
-  source: team-member | stakeholder-request | vendor-eval | claude-session
-  submitted_by: "..."
-  assigned_to: null # nullable
-  target_date: null # nullable, YYYY-MM-DD
-  design_doc: null # nullable, relative path under docs/design/
-  devops_wis: [] # array of WI-NNNNNN strings
-  blocked_by: [] # array of BL-NNNN IDs
-  related: [] # array of BL-NNNN IDs (non-blocking)
-  created: "YYYY-MM-DD"
-  updated: "YYYY-MM-DD"
-  notes:
-    - date: "YYYY-MM-DD"
-      author: "..."
-      text: "..."
-```
-
-### Status Lifecycle
+## Status Lifecycle
 
 ```
-Captured -> Evaluated -> Prioritized -> Ready -> In Progress -> Done
-   |           |            |                      |
-   |           |            |                      +---> archive.yaml
-   |           |            |
-   +-----------+------------+---> Deferred (can re-enter at any stage)
+Captured -> Evaluated -> Ready -> In Progress -> Done
+   |           |                    |
+   |           |                    +---> archived (`archived` label, closed)
+   |           |
+   +-----------+---> Deferred (can re-enter at any stage)
          (small items can skip stages)
 ```
 
+Priority (P1-P4) is set during evaluation — there is no separate Prioritized status (the `status:prioritized` label was retired).
+
 **Deferred** — Deliberately parked pending an external decision, dependency, or strategic evaluation. Unlike Captured (not yet triaged), Deferred items have been reviewed and intentionally held. Notes should explain the deferral reason and re-evaluation trigger.
 
-### Claude Build Confidence (CBC) Score
+## Claude Build Confidence (CBC) Score
 
 Reflects confidence that an item can be efficiently built by Claude agents with minimal human intervention.
 
@@ -153,50 +106,10 @@ Reflects confidence that an item can be efficiently built by Claude agents with 
 
 CBC 5 items can be dispatched as parallel background agents. CBC 4 items are next-up once their blockers clear. CBC 1-3 need human input before build.
 
-### Multi-WI Rollup Rules
-
-- **In Progress** if ANY WI is in progress
-- **Done** only when ALL WIs are promoted/closed
-- `/wi-sync` checks each WI and updates backlog status accordingly
-
 ---
 
-## Step 1 — Load Data
+## Route to Sub-command
 
-Read the following files:
+Read and follow the workflow in `${CLAUDE_PLUGIN_ROOT}/commands/process/backlog-workflows/github-actions.md`, executing the section matching `subcommand`.
 
-1. `{context.backlog.path}/backlog.yaml` — parse YAML, extract `items`, `next_id`, `last_updated`
-2. `{context.backlog.path}/tags.yaml` — parse YAML, extract `tags` array for validation
-3. `{context.backlog.path}/archive.yaml` — parse YAML, extract `items` (for archive count in dashboard)
-
-If `backlog.yaml` does not exist, report error and exit:
-
-```text
-**Error:** `{context.backlog.path}/backlog.yaml` not found. Initialize the backlog first.
-```
-
----
-
-## Step 2 — Route to Sub-command
-
-Based on `subcommand`, execute the corresponding section below.
-
----
-
-## Backend Routing
-
-Determine the effective backlog backend:
-
-1. If `backlog.backend` in the resolved context is explicitly `"yaml"` or `"salesforce"`, use the DevOps Center variant regardless of `workTracking.backend`.
-2. If `backlog.backend` is `"github-issues"`, use the GitHub Actions variant.
-3. If `backlog.backend` is not explicitly set: follow `workTracking.backend`:
-   - `"devops-center"` → DevOps Center variant
-   - `"github-actions"` → GitHub Actions variant
-
-**If DevOps Center variant:**
-Read and follow the workflow in `${CLAUDE_PLUGIN_ROOT}/commands/process/backlog-workflows/devops-center.md`.
-
-**If GitHub Actions variant:**
-Read and follow the workflow in `${CLAUDE_PLUGIN_ROOT}/commands/process/backlog-workflows/github-actions.md`.
-
-Pass through these resolved values: `subcommand`, `item_id`, `category`, `filters`, and the full resolved context.
+Pass through these resolved values: `subcommand`, `item_id`, `filters`, and the full resolved context.

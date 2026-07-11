@@ -16,9 +16,7 @@ The validation direction is inferred from build mode: agent-driven metadata buil
 
 Arguments can be:
 
-- A backlog item: `BL-0001` (resolves design_doc + devops_wis from backlog.yaml)
-- A work item: `WI-000010` (DOC mode — resolves to BL item via devops_wis, then design_doc)
-- A GitHub Issue: `#12` or `12` (GHA mode — resolves to Issue, reads design doc from `## Design` section in body)
+- A GitHub Issue: `#12` or `12` (resolves to Issue, reads design doc from `## Design` section in body)
 - A design doc path: `docs/design/example.md` (direct)
 - Flags:
   - `--section "Section Name"` — scope to a specific section/component group within the design doc (e.g., `--section "Custom Notification Types"` or `--section "Provider Alert Flows"`)
@@ -31,7 +29,6 @@ Examples:
 
 ```
 /validate-build BL-0001
-/validate-build WI-000010 --section "Custom Notification Types"
 /validate-build #12 --section "Custom Notification Types"
 /validate-build BL-0002 --target-org SomeOrg
 /validate-build docs/design/example.md --section "Provider Alert Flows"
@@ -72,12 +69,11 @@ Use the returned context for all org references, team lookups, and path resoluti
 
 ## Step 0 — Resolve Input & Load Context
 
-1. **Parse arguments.** Extract BL-NNNN, WI-NNNNNN, #NN, doc path, flags.
+1. **Parse arguments.** Extract BL-NNNN, #NN, doc path, flags.
 
 2. **Resolve the design doc:**
-   - If `BL-NNNN`: read the backlog source, find the item, extract `design_doc` and work item references. If no `design_doc`, STOP: "BL-NNNN has no design_doc — nothing to validate against."
-   - If `WI-NNNNNN` (DOC mode): scan the backlog source for any item whose `devops_wis` contains this WI. Then resolve as BL item.
-   - If `#NN` or bare number (GHA mode): fetch the Issue via `gh issue view {number} --repo {workTracking.issueRepo} --json body`. Extract the design doc path from the `## Design` section in the body. If "(none)", STOP: "Issue #{NN} has no design doc — nothing to validate against."
+   - If `BL-NNNN`: read the backlog source, find the item, extract `design_doc` and Issue references. If no `design_doc`, STOP: "BL-NNNN has no design_doc — nothing to validate against."
+   - If `#NN` or bare number: fetch the Issue via `gh issue view {number} --repo {workTracking.issueRepo} --json body`. Extract the design doc path from the `## Design` section in the body. If "(none)", STOP: "Issue #{NN} has no design doc — nothing to validate against."
    - If doc path: verify file exists, use directly.
    - If `--resume`: load `.validation-session.json` from repo root. Verify it exists. Skip to Step 3 with loaded state.
 
@@ -94,7 +90,7 @@ Use the returned context for all org references, team lookups, and path resoluti
 **Design doc:** {path}
 **Section:** {section name} ({n} components)
 **Target org:** {context.orgs.devAlias}
-**WIs:** {wi list}
+**Issues:** {issue list}
 **Assigned to:** {assignee}
 **Started:** {timestamp}
 ```
@@ -423,7 +419,7 @@ After completing the walkthrough (or if the user wants to pause), save the sessi
 {
   "version": 1,
   "backlog_item": "BL-0001",
-  "work_items": ["WI-000010 or #12"],
+  "issues": ["#12"],
   "design_doc": "docs/design/example.md",
   "section": "Custom Notification Types",
   "target_org": "{context.orgs.devAlias}",
@@ -611,14 +607,13 @@ When the user is satisfied:
 1. **Update the validation report** with final verdicts.
 2. **Write the validation marker** — write a single line to `.last-validate-build` in the project root:
    ```
-   {YYYY-MM-DD}|{WI-NNNNNN or #NN}|{PASS/NEEDS FIXES: n PASS, n FAIL, n ADJUST}
+   {YYYY-MM-DD}|{#NN}|{PASS/NEEDS FIXES: n PASS, n FAIL, n ADJUST}
    ```
-   Example: `2026-04-14|WI-000044|PASS: 14 PASS, 0 FAIL, 0 ADJUST`
    Example: `2026-04-14|#12|NEEDS FIXES: 10 PASS, 2 FAIL, 1 ADJUST`
 
-   Use the WI number (DOC mode) or Issue number (GHA mode) based on `workTracking.backend`. If the input was a BL item, use its associated WI/Issue reference. If the input was a design doc path with no WI/Issue, use the BL-NNNN ID instead.
+   Use the GitHub Issue number. If the input was a BL item, use its associated Issue reference. If the input was a design doc path with no Issue, use the BL-NNNN ID instead.
 
-   This file is checked by `/devops-commit` (DOC: before promotion) and referenced in the GHA PR workflow guidance. The gate considers validations from prior days as stale.
+   This file is referenced in the PR workflow guidance. The gate considers validations from prior days as stale.
 
    Add `.last-validate-build` to `.gitignore` if not already present.
 3. **Log to memory** if there's reusable feedback:
@@ -627,12 +622,6 @@ When the user is satisfied:
    - Only save feedback that applies to future builds, not one-off fixes
 4. **Suggest next steps:**
 
-   **If `workTracking.backend` == `"devops-center"`:**
-   - If all PASS: "Ready for promotion via DevOps Center."
-   - If DEFER items remain: "Schedule follow-up validation for {deferred items}."
-   - If this was one section: "Run `/validate-build {BL-NNNN}` without `--section` to validate remaining components."
-
-   **If `workTracking.backend` == `"github-actions"`:**
    - If all PASS: "Ready for PR — push your branch and run `gh pr create`."
    - If DEFER items remain: "Schedule follow-up validation for {deferred items}."
    - If this was one section: "Run `/validate-build #{NN}` without `--section` to validate remaining components."

@@ -1,6 +1,6 @@
 ---
 name: lookback
-description: Retrospective skill — reviews recent commits, proposes shared feedback memory changes, requires developer approval before writing
+description: Retrospective skill — reviews recent commits, audits existing memories, proposes mechanism + shared memory changes, requires developer approval before writing
 ---
 
 # /lookback — Retrospective & Shared Feedback Review
@@ -110,23 +110,45 @@ Analyze the work from Step 2 through these lenses. For each finding, rate confid
 
 ### What's outstanding?
 
-- Deferred items that haven't surfaced as open WIs or tasks yet
+- Deferred items that haven't surfaced as open Issues or tasks yet
 - Technical debt that accumulated during this period
 
 If `workstreamFilter` is set, focus analysis on commits and files matching that workstream.
 
 ---
 
-## Step 4 — Draft Memory Proposals
+## Step 3.5 — Audit Existing Memories
 
-For each High-confidence finding, draft a proposed change:
+Lookback is the process step that owns memory hygiene — without it, `.claude/memory/` only grows. Review the feedback memories touched by or related to this period's work, plus the 3–5 oldest entries in the `MEMORY.md` index, and evaluate each:
 
-| #   | Type      | Action | Target file       | Summary                |
-| --- | --------- | ------ | ----------------- | ---------------------- |
-| 1   | feedback  | Create | `feedback_xxx.md` | {one-line description} |
-| 2   | feedback  | Update | `feedback_yyy.md` | {what changes and why} |
-| 3   | project   | Update | `MEMORY.md`       | {section and change}   |
-| 4   | CLAUDE.md | Update | `CLAUDE.md`       | {rule or note to add}  |
+- **Retire** — the memory's "Working if:" signal shows it never fires, the underlying tool or process is gone, or the guidance is demonstrably wrong.
+- **Merge** — overlaps another memory; combine into one file and delete the weaker.
+- **Graduate to mechanism** — the rule is deterministic (a hook, `.claude/rules/` entry, script gate, or CI lint could enforce it). Propose the mechanism; retire the memory once it lands.
+- **Keep** — still earning its place. No proposal needed.
+
+Retire/merge/graduate findings become proposals in Step 4 alongside the new ones.
+
+---
+
+## Step 4 — Draft Proposals
+
+For each High-confidence finding, first classify it:
+
+- **Deterministic** — a machine could detect or prevent it (file pattern, command output, schema check). Propose a **mechanism**: hook, `.claude/rules/` entry, script gate, preflight check, or CI lint in the target project. Memory is the fallback, not the default.
+- **Judgment** — requires context or discretion to apply correctly. Propose a **memory**.
+
+Draft a proposed change per finding (including Step 3.5 audit outcomes):
+
+| #   | Type      | Action | Target file                             | Summary                     |
+| --- | --------- | ------ | --------------------------------------- | --------------------------- |
+| 1   | mechanism | Create | `.claude/rules/xxx.md` or hook/CI check | {what it detects/prevents}  |
+| 2   | feedback  | Create | `feedback_xxx.md`                       | {one-line description}      |
+| 3   | feedback  | Update | `feedback_yyy.md`                       | {what changes and why}      |
+| 4   | feedback  | Retire | `feedback_zzz.md`                       | {why it's dead — Step 3.5}  |
+| 5   | project   | Update | `MEMORY.md`                             | {section and change}        |
+| 6   | CLAUDE.md | Update | `CLAUDE.md`                             | {rule or note to add}       |
+
+Every drafted `feedback` memory must end with a **"Working if:"** line — the observable signal that the rule is helping (e.g., "Working if: no deploy failures from stale manifests since adoption"). Step 3.5 uses these signals to retire dead rules in future lookbacks.
 
 For Low-confidence findings, list them separately as **Observations (not proposed for memory)**. These are worth reviewing but don't warrant a permanent memory change yet.
 
@@ -171,6 +193,8 @@ For each approved proposal:
 1. **New `feedback` or `project` file** — Write to `.claude/memory/{filename}.md` using the standard frontmatter format. Update `.claude/memory/MEMORY.md` index with a one-line entry under the appropriate section.
 2. **Update existing memory file** — Apply the change to `.claude/memory/{filename}.md`. Update the MEMORY.md index description if the summary changed.
 3. **CLAUDE.md update** — Apply directly to `CLAUDE.md`.
+4. **Mechanism** — Apply the hook / rules-file / script / CI change in the target project. If a memory previously covered the same ground, retire it in the same pass (with approval).
+5. **Retire / merge (from Step 3.5)** — Delete the memory file (or fold its content into the surviving file) and remove its `MEMORY.md` index line.
 
 After all writes, add or update the lookback timestamp in `.claude/memory/MEMORY.md`:
 
@@ -197,5 +221,7 @@ Report what was written:
 - **Propose-then-approve only.** Never write to `.claude/memory/` or `CLAUDE.md` without explicit developer approval in Step 5. This is a shared memory system — changes affect all developers.
 - **High bar for new feedback memories.** A pattern should appear at least twice or cause a real problem before it's worth encoding. Resist creating memories for one-off events.
 - **Additive by default.** New findings extend existing memories rather than replacing them. Only replace when the old guidance is demonstrably wrong.
+- **Prevention over memory.** Deterministic detection belongs in a mechanism (hook, rules file, script gate, CI lint) — memory is for judgment. When both could work, propose the mechanism.
+- **Retirement is part of the job.** Step 3.5 is the sanctioned path for deleting or merging stale memories — still propose-then-approve, never silent.
 - **Low-confidence findings stay as observations.** Don't promote them to memory just to have something to show. Leave them as notes for the developer to decide later.
 - **Workstream focus sharpens signal.** When `--workstream` is set, depth over breadth — go deep on that area rather than producing generic observations.
