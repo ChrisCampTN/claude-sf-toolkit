@@ -140,7 +140,7 @@ Three tiers of degradation:
 **Tier 3 — Total failure:** All 3 agents fail. Fall back to minimal briefing from local file reads only:
 
 1. Run `git log --oneline -5` directly
-2. Read `docs/backlog/backlog.yaml` for In Progress items
+2. Run `gh issue list --label "status:in-progress"` for active items
 3. Read memory files for Issue status
 4. Skip external context entirely
 5. Report: `[DEGRADED] Full briefing unavailable — showing minimal git + backlog state`
@@ -163,23 +163,23 @@ Skip items that are already tracked in the backlog — check Issue cross-referen
 
 ### 4a-bis — Backlog Pipeline
 
-Read `docs/backlog/backlog.yaml` if it exists. **Skip items already surfaced in Step 2** (In Progress and Ready+Assigned are active work, not pipeline). This section covers what's coming next — the queue feeding into active work.
+Query open backlog Issues: `gh issue list --state open --json number,title,labels,assignees,updatedAt --limit 200`. **Skip items already surfaced in Step 2** (in-progress and ready+assigned are active work, not pipeline). This section covers what's coming next — the queue feeding into active work.
 
-Extract:
+Extract (status/priority/effort from labels — `status:*`, `P*`, `effort:*`):
 
-1. **Ready but unassigned** — fully scoped, waiting for someone to claim. Show BL ID, title, effort, priority.
-2. **Prioritized P1/P2** — evaluated but not yet Ready. Show BL ID, title, and what's missing (effort, complexity, assigned_to, design doc).
-3. **Captured count** — untriaged items needing `/backlog evaluate`. Surface count + titles (max 5, then "and {n} more").
-4. **Recently-modified incomplete items** — Check for backlog items with status `Captured` or `Evaluated` that were added or updated in the last 3 days (compare item `created` or `updated` dates against `todayDate - 3 days`). These represent **warm work from a recent session that may have been left incomplete**. Surface them separately:
+1. **Ready but unassigned** — `status:ready`, no assignee. Show issue number, title, effort, priority.
+2. **Groomed P1/P2** — evaluated but not yet Ready. Show issue number, title, and what's missing (effort, complexity, assignee, design doc).
+3. **Captured count** — `status:captured` items needing `/backlog evaluate`. Surface count + titles (max 5, then "and {n} more").
+4. **Recently-modified incomplete items** — Issues labeled `status:captured` or `status:groomed` with `updatedAt` in the last 3 days (vs `todayDate - 3 days`). These represent **warm work from a recent session that may have been left incomplete**. Surface them separately:
 
 ```text
 **Recently added / modified (last 3 days):**
-- BL-NNNN: {title} (status: {status}, updated: {date}) — {context: "added last session", "modified but still Captured", etc.}
+- #NN: {title} (status: {status}, updated: {date}) — {context: "added last session", "modified but still captured", etc.}
 ```
 
 When listing backlog items, annotate assignment relative to the current user:
 
-- Items where `assigned_to` matches `currentUserName` → show as **(you)**
+- Items where the assignee matches the current user's GitHub login → show as **(you)**
 - Items assigned to someone else → show their name
 - Unassigned items → show **unassigned**
 
@@ -189,16 +189,16 @@ Report:
 ### Backlog Pipeline
 
 **Ready, unassigned:** {n}
-- BL-NNNN: {title} (effort: {size}, priority: {P#})
+- #NN: {title} (effort: {size}, priority: {P#})
 
 **High priority, not Ready:** {n}
-- BL-NNNN: {title} — needs: {missing fields}
+- #NN: {title} — needs: {missing fields}
 
-**Needs triage:** {n} Captured items
+**Needs triage:** {n} captured items
 - {titles, max 5, then "and {n} more"}
 ```
 
-If `docs/backlog/backlog.yaml` does not exist, report `[SKIP] No backlog file found.`
+If the repo has no backlog labels configured (no `status:*` labels exist), report `[SKIP] No backlog configured — run /setup.`
 
 ### 4b — Git-sourced items
 

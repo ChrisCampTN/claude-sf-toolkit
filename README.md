@@ -194,8 +194,6 @@ Project scaffolding templates in `templates/`:
 | `platform-brief.md.template` | Org metadata brief (auto-populated by agent) |
 | `build-review-process.md.template` | Build session review discipline |
 | `coding-standards.md.template` | SF declarative + Apex development standards |
-| `backlog.yaml` | Empty backlog with schema documentation |
-| `tags.yaml` | Empty tag list for backlog items |
 | `sf-toolkit.json` | Empty plugin config |
 
 ## Updating

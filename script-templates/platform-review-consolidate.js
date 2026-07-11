@@ -18,7 +18,7 @@
  *   --severity-threshold <lvl> Minimum severity for backlog candidates: Critical|High|Medium|Low (default: Medium)
  *   --output <path>            Output report path (default: <checkpoint-dir>/platform-review-report.md)
  *   --backlog-json <path>      Output backlog candidates JSON (default: <checkpoint-dir>/backlog-candidates.json)
- *   --backlog-path <path>      Path to existing backlog YAML for overlap context (default: docs/backlog/backlog.yaml)
+ *   --repo <owner/repo>        GitHub repo whose open Issues provide backlog overlap context (omit to skip)
  *   --project-name <name>      Project name for report headers (default: none)
  *   --target-orgs <orgs>       Target org description for report header (default: auto-detected from findings)
  *   --json                     Output summary as JSON instead of text
@@ -53,6 +53,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 const REPO_ROOT = path.join(__dirname, "..");
 
@@ -131,7 +132,7 @@ function printHelp() {
   lines.push("  --severity-threshold <lvl> Minimum severity: Critical|High|Medium|Low (default: Medium)");
   lines.push("  --output <path>            Output report path (default: <checkpoint-dir>/platform-review-report.md)");
   lines.push("  --backlog-json <path>      Output backlog candidates JSON (default: <checkpoint-dir>/backlog-candidates.json)");
-  lines.push("  --backlog-path <path>      Path to existing backlog YAML for overlap context (default: docs/backlog/backlog.yaml)");
+  lines.push("  --repo <owner/repo>        GitHub repo whose open Issues provide backlog overlap context (omit to skip)");
   lines.push("  --project-name <name>      Project name for report headers");
   lines.push("  --target-orgs <orgs>       Target org description for report header");
   lines.push("  --json                     Output summary as JSON instead of text");
@@ -447,9 +448,7 @@ function main() {
     ? path.resolve(REPO_ROOT, args["backlog-json"])
     : path.join(checkpointDir, "backlog-candidates.json");
 
-  const backlogYamlPath = args["backlog-path"]
-    ? path.resolve(REPO_ROOT, args["backlog-path"])
-    : path.join(REPO_ROOT, "docs", "backlog", "backlog.yaml");
+  const issueRepo = args["repo"] || null;
 
   const projectName = args["project-name"] || null;
   const targetOrgs = args["target-orgs"] || null;
@@ -504,43 +503,32 @@ function main() {
     console.log(`Deduplicated ${deduplicatedCount} cross-persona duplicates.`);
   }
 
-  // --- Load backlog context for overlap classification ---
+  // --- Load backlog context for overlap classification (GitHub Issues) ---
   let backlogContext = [];
-  if (fs.existsSync(backlogYamlPath)) {
+  if (issueRepo) {
     try {
-      // Try to load js-yaml if available; fall back to basic parsing
-      let yamlLoad;
-      try {
-        yamlLoad = require("js-yaml").load;
-      } catch (e) {
-        yamlLoad = null;
-      }
-
-      if (yamlLoad) {
-        const backlogRaw = fs.readFileSync(backlogYamlPath, "utf8");
-        const backlogData = yamlLoad(backlogRaw);
-        const items = (backlogData && backlogData.items) || [];
-        backlogContext = items.map((item) => ({
-          id: item.id,
-          title: item.title,
-          description: (item.description || "").slice(0, 300).trim(),
-          category: item.category,
-          status: item.status,
-          tags: item.tags || [],
-        }));
-      } else {
-        console.error(
-          "Warning: js-yaml not installed — skipping backlog context loading. Install with: npm install js-yaml"
-        );
-      }
+      const raw = execSync(
+        `gh issue list --repo ${issueRepo} --state open --json number,title,body,labels --limit 500`,
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+      );
+      const labelValue = (labels, prefix) =>
+        (labels.find((l) => l.name.startsWith(prefix)) || { name: "" }).name.slice(prefix.length) || null;
+      backlogContext = JSON.parse(raw).map((issue) => ({
+        id: `#${issue.number}`,
+        title: issue.title,
+        description: (issue.body || "").slice(0, 300).trim(),
+        category: labelValue(issue.labels, "cat:"),
+        status: labelValue(issue.labels, "status:"),
+        tags: issue.labels
+          .filter((l) => l.name.startsWith("tag:"))
+          .map((l) => l.name.slice(4)),
+      }));
     } catch (err) {
-      console.error(`Warning: cannot read backlog YAML — ${err.message}`);
+      console.error(`Warning: cannot load Issues from ${issueRepo} — ${err.message}`);
     }
   } else {
     console.log(
-      "Note: No backlog YAML found at " +
-        path.relative(REPO_ROOT, backlogYamlPath) +
-        " — skipping overlap context."
+      "Note: no --repo provided — skipping backlog overlap context."
     );
   }
 

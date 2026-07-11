@@ -16,7 +16,6 @@ The validation direction is inferred from build mode: agent-driven metadata buil
 
 Arguments can be:
 
-- A backlog item: `BL-0001` (resolves design_doc from backlog.yaml)
 - A GitHub Issue: `#12` or `12` (resolves to Issue, reads design doc from `## Design` section in body)
 - A design doc path: `docs/design/example.md` (direct)
 - Flags:

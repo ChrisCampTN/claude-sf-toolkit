@@ -109,7 +109,7 @@ Read `MEMORY.md` and scan for memories that this session's work may have obsolet
 
 ### Execute
 
-Create/update/remove memory files and update MEMORY.md directly. Report what changed:
+Create/update/remove memory files and update MEMORY.md directly. **Before adding index lines, run `wc -l .claude/memory/MEMORY.md`** — the harness loads only the first 200 lines (25KB) at session start, so if the addition would push past ~195 lines, route it to a topical sub-index (`index_*.md`) instead. Report what changed:
 
 ```text
 ### Memory Maintenance

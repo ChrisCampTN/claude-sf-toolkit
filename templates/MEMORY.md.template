@@ -1,6 +1,7 @@
 # {{PROJECT_NAME}} — Shared Project Memory
 
-> **This file is repo-tracked and shared by the whole team.** It is the canonical source for project state, Issue status, feedback patterns, and team context. When writing `project`, `feedback`, or `reference` type memories, write to this directory (`.claude/memory/`) and update this index. Personal memories (timezone, machine-specific preferences) go in your local `~/.claude/projects/.../memory/` instead.
+> **This file is repo-tracked and shared by the whole team.** It is the canonical source for project state, Issue status, feedback patterns, and team context.
+> **Hard cap: 200 lines / 25KB.** The harness loads only the first 200 lines at session start — content past the cap is silently dropped. Keep this file as an index (one line per memory); route detail to memory files and topical sub-indexes (`index_*.md`). When writing `project`, `feedback`, or `reference` type memories, write to this directory (`.claude/memory/`) and update this index. Personal memories (timezone, machine-specific preferences) go in your local `~/.claude/projects/.../memory/` instead.
 
 ## Project Summary
 

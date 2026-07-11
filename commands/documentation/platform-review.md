@@ -560,9 +560,7 @@ For **new items**, run `node scripts/backlog-add.js {BACKLOG_FLAGS}` for each ap
 - `--source claude-session`
 - `--note "Added from /platform-review {persona} finding {id}"`
 
-For **expand items**:
-- **YAML mode:** update the existing backlog item's notes array in `{context.backlog.path}/backlog.yaml` with a new note entry referencing the platform review finding.
-- **GHA mode:** append a comment to the issue: `gh issue comment {number} --repo {workTracking.issueRepo} --body "Platform review finding: {finding summary and link}"`.
+For **expand items**: append a comment to the issue: `gh issue comment {number} --repo {workTracking.issueRepo} --body "Platform review finding: {finding summary and link}"`.
 
 After all additions/expansions, regenerate the backlog:
 
@@ -657,7 +655,7 @@ Each persona writes a `{persona}.findings.json` to the checkpoint directory with
 | Medium   | Improvement opportunity, moderate gap, efficiency gain                                |
 | Low      | Nice-to-have, minor cleanup, future consideration                                     |
 
-**Tags** should come from the project's tag definitions (e.g., `docs/backlog/tags.yaml` if present). Primary mapping:
+**Tags** should come from the project's existing `tag:*` labels (`gh label list --search tag:`). Primary mapping:
 
 - Security -> `compliance` | QA -> `testing` | Docs -> `documentation` | Standards -> `tech-debt` | Agentforce -> `ai-agents`, `data-cloud` | Analytics -> `analytics` | DevOps -> `devops`
 

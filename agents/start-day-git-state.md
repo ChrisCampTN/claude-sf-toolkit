@@ -23,7 +23,7 @@ Gather the current git repository state and check for org metadata drift. Report
 
 - Read `docs/platform-brief.md` for current initiative phases and key areas
 - Read `.claude/memory/MEMORY.md` Active Work Items table for feature branch cross-reference
-- Read `docs/backlog/backlog.yaml` for assignment-aware drift filtering (match `assigned_to` and Issue references)
+- Query `gh issue list --state open --assignee @me --json number,title` for assignment-aware drift filtering
 
 ## Inputs
 
@@ -82,11 +82,10 @@ If both approaches fail (auth expired, org unreachable), report: `[SKIP] Org dri
 
 ### 3. Assignment-Aware Drift Filtering
 
-After retrieving the drift list, read `docs/backlog/backlog.yaml` and cross-reference drifted components against the current user's assigned Issues:
+After retrieving the drift list, query the current user's assigned open Issues (`gh issue list --state open --assignee {{currentUserName}} --json number,title`) and cross-reference drifted components:
 
-1. Find backlog items where `assigned_to` matches {{currentUserName}}
-2. Get the Issue references from those items
-3. Categorize drift into:
+1. Match drifted components to the metadata named in those Issues (title, body, linked design doc)
+2. Categorize drift into:
    - **Your drift** — components belonging to Issues assigned to you (actionable)
    - **Other drift** — components from other team members' Issues (summary count only)
 

@@ -22,7 +22,7 @@ Build a unified view of all active work from memory, backlog, and GitHub Issues.
 ## Reference Files
 
 - Read `.claude/memory/MEMORY.md` — Active Work Items table for Issue status, assignment, notes
-- Read `docs/backlog/backlog.yaml` — all items with status `In Progress` or `Ready`
+- Query `gh issue list --state open --label "status:in-progress" --json number,title,labels,assignees` (repeat for `status:ready`)
 - Read `docs/platform-brief.md` — Active Initiatives table for initiative phase context
 
 ## Inputs

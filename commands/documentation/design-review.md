@@ -12,10 +12,10 @@ Validate design documents against actual org metadata, source files, and coding 
 Arguments can be:
 
 - A design doc path: `docs/design/feature-name/spec.md`
-- A backlog item ID: `BL-0054` (resolves design_doc from backlog.yaml)
+- A GitHub Issue: `#54` or `54` (reads the design doc path from the `## Design` section of the Issue body)
 - Empty — prompts user to specify
 
-If a backlog item ID is provided and has no `design_doc` set, report FAIL and stop.
+If an Issue is provided and its `## Design` section has no doc path, report FAIL and stop.
 
 ---
 
@@ -51,7 +51,7 @@ Use the returned context for all org references, team lookups, and path resoluti
 
 ## Step 0 — Resolve Input
 
-1. If argument is `BL-NNNN`: read `{context.backlog.path}/backlog.yaml`, find the item, extract `design_doc` path. If `design_doc` is null, report FAIL: "BL-NNNN has no design_doc — cannot review."
+1. If argument is an Issue number: `gh issue view {N} --json body`, extract the design doc path from the `## Design` section. If absent, report FAIL: "#{N} has no design doc linked — cannot review."
 2. If argument is a file path: verify the file exists.
 3. Read the design document into context.
 4. Extract the backlog item ID from the doc or argument (for cross-referencing).
