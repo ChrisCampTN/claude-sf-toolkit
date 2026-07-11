@@ -5,7 +5,7 @@ description: Design document accuracy review against org metadata, source files,
 
 # /design-review — Design Document Accuracy Review
 
-Validate design documents against actual org metadata, source files, and coding standards before a backlog item graduates to a work item. Catches API name typos, missing fields, incorrect object references, standards violations, and stale consumer references.
+Validate design documents against actual org metadata, source files, and coding standards before a backlog item graduates to in-progress. Catches API name typos, missing fields, incorrect object references, standards violations, and stale consumer references.
 
 **Arguments:** `$ARGUMENTS`
 
@@ -23,7 +23,7 @@ If a backlog item ID is provided and has no `design_doc` set, report FAIL and st
 
 ### /backlog graduate
 
-`/backlog graduate` should invoke `/design-review BL-NNNN` as part of its graduation gate (Check 2b). Design review must PASS or WARN (with user acknowledgment) before WI creation proceeds.
+`/backlog graduate` should invoke `/design-review BL-NNNN` as part of its graduation gate (Check 2b). Design review must PASS or WARN (with user acknowledgment) before graduation proceeds.
 
 ### /skill-preflight
 

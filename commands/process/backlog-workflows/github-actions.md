@@ -1,10 +1,9 @@
-# Backlog Workflows — GitHub Actions (Issues Backend)
+# Backlog Workflows — GitHub Issues Backend
 
-> **Variant of:** `commands/process/backlog.md`
-> **Backend:** `github-actions` (backlog.backend: `github-issues`)
-> **Counterpart:** `commands/process/backlog-workflows/devops-center.md`
+> **Workflow for:** `commands/process/backlog.md`
+> **Backend:** GitHub Issues (the only backlog backend as of v2.0.0)
 
-This file contains all sub-command implementations for the GitHub Issues backlog backend, used when `workTracking.backend` is `"github-actions"`.
+This file contains all sub-command implementations for the GitHub Issues backlog backend.
 
 The parent skill (`/backlog`) handles argument parsing and resolution before delegating here. All variables from the parent (subcommand, item_id, category, filters, resolved context) are available.
 
@@ -16,13 +15,14 @@ The labels created by `commands/setup.md` use these forms — match them when em
 
 | Class      | Label form                                                                                          | Note                                                                                                                                                       |
 | ---------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status     | `status:captured`, `status:groomed`, `status:prioritized`, `status:in-progress`, `status:deferred`  | **Lowercase**, hyphenated. Canonical value (e.g., "Captured") must be lowercased + hyphenated before emitting.                                             |
+| Status     | `status:captured`, `status:groomed`, `status:in-progress`, `status:deferred`                        | **Lowercase**, hyphenated. Canonical value (e.g., "Captured") must be lowercased + hyphenated before emitting. `status:prioritized` is retired — do not emit it. |
 | Priority   | `P1`, `P2`, `P3`, `P4`                                                                              | No prefix; uppercase letter + digit.                                                                                                                       |
 | Effort     | `effort:XS`, `effort:S`, `effort:M`, `effort:L`, `effort:XL`                                        | Uppercase letter. Match canonical value directly.                                                                                                          |
 | Complexity | `complexity:low`, `complexity:med`, `complexity:high`                                               | **Lowercase**. Canonical "Low/Med/High" must be lowercased before emitting.                                                                                |
 | Source     | `source:team`, `source:stakeholder`, `source:vendor`, `source:claude`                               | **Short form**. Map canonical `team-member` → `team`, `stakeholder-request` → `stakeholder`, `vendor-eval` → `vendor`, `claude-session` → `claude`.        |
 | Category   | `cat:<slug>`                                                                                        | `/` replaced with `-` (e.g., `cat:UI-UX`).                                                                                                                 |
 | CBC        | `cbc:1`–`cbc:5`                                                                                     | Numeric.                                                                                                                                                   |
+| Tag        | `tag:{value}`                                                                                       | Free-form item tags.                                                                                                                                       |
 | Archived   | `archived`                                                                                          | Bare label, no prefix.                                                                                                                                     |
 
 `scripts/backlog-add.js` translates canonical → label form automatically when writing. The manual `gh issue edit` flows below (evaluate, update) must apply the same normalization themselves before passing values to `--add-label`.
@@ -55,12 +55,12 @@ When creating or evaluating issues, use this body structure:
 
 **Trigger:** `/backlog` or `/backlog dashboard`
 
-Use `scripts/backlog-stats.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-stats.js`.
+Use `scripts/backlog-stats.js`. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-stats.js`.
 
 Run:
 
 ```bash
-node scripts/backlog-stats.js --table --backend github --repo {workTracking.issueRepo}
+node scripts/backlog-stats.js --table --repo {workTracking.issueRepo}
 ```
 
 The script fetches all issues (up to 200), maps labels to the internal item shape (priority `P*`, `status:*`, `effort:*`, `complexity:*`, `cat:*`, `cbc:*`, `source:*`), and prints a dashboard grouped by status / category / priority / CBC score. Issues with the `archived` label are counted separately.
@@ -79,13 +79,12 @@ Display the script's table output verbatim to the user, then add a one-line head
    - **Category** (required): one of the categories from `context.backlog.categories`. If no categories configured, accept any value.
    - **Priority** (optional, default P3): P1 (critical), P2 (high), P3 (medium), P4 (low)
    - **Source** (optional, default "claude-session"): team-member, stakeholder-request, vendor-eval, claude-session
-3. Use `scripts/backlog-add.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-add.js`.
+3. Use `scripts/backlog-add.js`. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-add.js`.
 
    Run:
 
    ```bash
    node scripts/backlog-add.js \
-     --backend github \
      --repo {workTracking.issueRepo} \
      --title "{title}" \
      --description "{description}" \
@@ -96,7 +95,7 @@ Display the script's table output verbatim to the user, then add a one-line head
      --json
    ```
 
-   The script slugs `/` → `-` in the category label (so `cat:UI/UX` becomes `cat:UI-UX`), applies `status:captured` by default, and writes the issue body using the template above. Tags passed via `--tags` become labels on the issue.
+   The script slugs `/` → `-` in the category label (so `cat:UI/UX` becomes `cat:UI-UX`), applies `status:captured` by default, and writes the issue body using the template above. Tags passed via `--tags` become `tag:{value}` labels on the issue.
 
 4. Parse the JSON output (contains `id`, `title`, `url`, etc.).
 5. Report:
@@ -115,13 +114,12 @@ URL: {url}
 
 **Trigger:** `/backlog search {filters}`
 
-Use `scripts/backlog-search.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-search.js`.
+Use `scripts/backlog-search.js`. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-search.js`.
 
 Run:
 
 ```bash
 node scripts/backlog-search.js \
-  --backend github \
   --repo {workTracking.issueRepo} \
   {filter expressions...}
 ```
@@ -198,32 +196,6 @@ CBC Score: {score}/5
 Effort: {effort} | Complexity: {complexity}
 Status: Captured → Groomed
 ```
-
----
-
-## Sub-command: `prioritize`
-
-**Trigger:** `/backlog prioritize` or `/backlog prioritize {category}`
-
-1. Fetch open issues, optionally filtered by category label:
-
-```bash
-gh issue list --repo {workTracking.issueRepo} --state open --label "status:groomed" {--label "cat:{category}" if specified} --json number,title,labels
-```
-
-2. Parse and display current priority ordering.
-3. Present the list and ask the user to reorder by assigning priority labels (P1–P4).
-4. For each issue that needs a priority change:
-
-```bash
-gh issue edit {number} --repo {workTracking.issueRepo} \
-  --remove-label "P{old}" \
-  --add-label "P{new}" \
-  --remove-label "status:groomed" \
-  --add-label "status:prioritized"
-```
-
-5. Report the updated priority list.
 
 ---
 
@@ -306,7 +278,7 @@ gh issue view {number} --repo {workTracking.issueRepo} --json number,title,body,
 
 ```bash
 gh issue edit {number} --repo {workTracking.issueRepo} \
-  --remove-label "status:prioritized" \
+  --remove-label "status:groomed" \
   --add-label "status:in-progress"
 ```
 
@@ -406,19 +378,18 @@ gh issue edit {number} --repo {workTracking.issueRepo} --add-label "archived"
 
 **Trigger:** `/backlog render`
 
-Use `scripts/backlog-render.js` in `--backend github` mode. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-render.js`.
+Use `scripts/backlog-render.js`. Check for a local copy in `scripts/` first; if missing, copy from `${CLAUDE_PLUGIN_ROOT}/script-templates/backlog-render.js`.
 
 Run:
 
 ```bash
 node scripts/backlog-render.js \
-  --backend github \
   --repo {workTracking.issueRepo} \
   --output {context.backlog.path}/README.md \
   --project-name "{project name}"
 ```
 
-The script shells out to `gh issue list --state all` (up to 200 issues), maps labels to the internal backlog schema (priority `P*`, `status:*`, `effort:*`, `complexity:*`, `cat:*`, `cbc:*`, `source:*`), and writes the same README sections as the YAML variant: executive summary, summary table, category matrix, priority board, tags index, recently-updated. Issues with the `archived` label are routed to the archive bucket.
+The script shells out to `gh issue list --state all` (up to 200 issues), maps labels to the internal backlog schema (priority `P*`, `status:*`, `effort:*`, `complexity:*`, `cat:*`, `cbc:*`, `source:*`), and writes the README sections: executive summary, needs-review, summary table, category matrix, priority board, tags index, recently-updated. Issues with the `archived` label are routed to the archive bucket.
 
 Report the path written (from the script's stdout).
 
@@ -428,7 +399,7 @@ Report the path written (from the script's stdout).
 
 **Trigger:** `/backlog migrate`
 
-One-time migration from YAML backlog to GitHub Issues. Only available when switching from DOC to GHA.
+One-time migration from a legacy YAML backlog (plugin v1.x) to GitHub Issues.
 
 1. Check that `docs/backlog/backlog.yaml` exists. If not: "No backlog.yaml found — nothing to migrate."
 

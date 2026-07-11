@@ -2,17 +2,14 @@
 /**
  * backlog-render.js
  *
- * Generates a README.md from backlog.yaml + archive.yaml (default), OR from
- * GitHub Issues (--backend github --repo <owner/repo>).
+ * Generates a README.md from GitHub Issues (--repo <owner/repo>).
  *
  * Usage:
- *   node scripts/backlog-render.js [options]
+ *   node scripts/backlog-render.js --repo owner/repo [options]
  *
  * Options:
- *   --backend <yaml|github>  Data source (default: yaml)
- *   --repo <owner/repo>     GitHub repo (required when --backend github)
- *   --backlog-path <path>   Path to backlog.yaml (default: docs/backlog/backlog.yaml)
- *   --archive-path <path>   Path to archive.yaml (default: docs/backlog/archive.yaml)
+ *   --repo <owner/repo>     GitHub repo (required)
+ *   --backend <github>      Data source (optional; 'github' is the only supported backend)
  *   --output <path>         Output README.md path (default: docs/backlog/README.md)
  *   --project-name <name>   Project name for header (default: "Project")
  *   --help                  Show this help message
@@ -20,7 +17,6 @@
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
-const yaml = require("js-yaml");
 
 // ---------------------------------------------------------------------------
 // Configuration — override via CLI args
@@ -36,13 +32,11 @@ function parseArgs(argv) {
     if (key === "--help") {
       console.log(
         [
-          "Usage: node scripts/backlog-render.js [options]",
+          "Usage: node scripts/backlog-render.js --repo owner/repo [options]",
           "",
           "Options:",
-          "  --backend <yaml|github>  Data source (default: yaml)",
-          "  --repo <owner/repo>     GitHub repo (required when --backend github)",
-          "  --backlog-path <path>   Path to backlog.yaml (default: docs/backlog/backlog.yaml)",
-          "  --archive-path <path>   Path to archive.yaml (default: docs/backlog/archive.yaml)",
+          "  --repo <owner/repo>     GitHub repo (required)",
+          "  --backend <github>      Data source (optional; 'github' is the only supported backend)",
           "  --output <path>         Output README.md path (default: docs/backlog/README.md)",
           "  --project-name <name>   Project name for header (default: \"Project\")",
           "  --help                  Show this help message"
@@ -59,9 +53,8 @@ function parseArgs(argv) {
       args[name] = argv[i + 1];
       i += 2;
     } else {
-      // Positional arg treated as backlog path
-      args["backlog-path"] = argv[i];
-      i++;
+      console.error(`Error: unexpected argument "${key}"`);
+      process.exit(1);
     }
   }
   return args;
@@ -69,28 +62,22 @@ function parseArgs(argv) {
 
 const CLI_ARGS = parseArgs(process.argv);
 
-const BACKLOG_PATH = path.resolve(
-  REPO_ROOT,
-  CLI_ARGS["backlog-path"] || "docs/backlog/backlog.yaml"
-);
-const ARCHIVE_PATH = path.resolve(
-  REPO_ROOT,
-  CLI_ARGS["archive-path"] || "docs/backlog/archive.yaml"
-);
 const OUTPUT_PATH = path.resolve(
   REPO_ROOT,
   CLI_ARGS["output"] || "docs/backlog/README.md"
 );
 const PROJECT_NAME = CLI_ARGS["project-name"] || "Project";
-const BACKEND = (CLI_ARGS["backend"] || "yaml").toLowerCase();
+const BACKEND = (CLI_ARGS["backend"] || "github").toLowerCase();
 const REPO = CLI_ARGS["repo"] || null;
 
-if (BACKEND !== "yaml" && BACKEND !== "github") {
-  console.error(`Error: --backend must be 'yaml' or 'github' (got: ${BACKEND})`);
+if (BACKEND !== "github") {
+  console.error(
+    `Error: --backend must be 'github' (got: ${BACKEND}). GitHub Issues is the only supported backend as of v2.0.0.`
+  );
   process.exit(1);
 }
-if (BACKEND === "github" && !REPO) {
-  console.error("Error: --backend github requires --repo <owner/repo>");
+if (!REPO) {
+  console.error("Error: --repo <owner/repo> is required");
   process.exit(1);
 }
 
@@ -154,15 +141,6 @@ function unslugCategory(rawValue, slugMap) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function loadYaml(filePath) {
-  const raw = fs.readFileSync(filePath, "utf8");
-  return yaml.load(raw);
-}
-
-// ---------------------------------------------------------------------------
 // GitHub Issues source
 // ---------------------------------------------------------------------------
 
@@ -179,7 +157,7 @@ const STATUS_LABEL_MAP = {
 };
 
 const RESERVED_LABEL_RE =
-  /^(status:|cat:|effort:|complexity:|cbc:|source:|archived$)/i;
+  /^(status:|cat:|effort:|complexity:|cbc:|source:|archived$|needs-review$)/i;
 
 function fetchGitHubIssues(repo) {
   try {
@@ -227,10 +205,12 @@ function issueToItem(issue, slugMap) {
 
   const cbcVal = cbcLabel ? parseInt(cbcLabel.slice("cbc:".length), 10) : NaN;
   const rawCat = categoryLabel ? categoryLabel.slice("cat:".length) : "";
+  const needsReview = labelNames.some((n) => /^needs-review$/i.test(n));
 
   return {
     id: `#${issue.number}`,
     title: issue.title,
+    url: issue.url || null,
     category: unslugCategory(rawCat, slugMap),
     status: statusFromIssue(labelNames, issue.state),
     priority: priorityLabel || "Unset",
@@ -240,6 +220,7 @@ function issueToItem(issue, slugMap) {
       : "Unset",
     cbc_score: Number.isFinite(cbcVal) ? cbcVal : null,
     tags,
+    needs_review: needsReview,
     source: sourceLabel ? sourceLabel.slice("source:".length) : "",
     assigned_to:
       (issue.assignees && issue.assignees[0] && issue.assignees[0].login) ||
@@ -260,15 +241,39 @@ function loadFromGitHub(repo) {
   const issues = fetchGitHubIssues(repo);
   const items = [];
   const archived = [];
+  const staleStatusWarnings = [];
   for (const issue of issues) {
     const labelNames = (issue.labels || []).map((l) => l.name);
     const isArchived = labelNames.some((n) => /^archived$/i.test(n));
+    if (issue.state === "CLOSED" && !isArchived) {
+      const statusLabel = labelNames.find((n) => /^status:/i.test(n));
+      if (statusLabel) {
+        const val = statusLabel.slice("status:".length).toLowerCase();
+        if (val !== "done") {
+          staleStatusWarnings.push({
+            number: issue.number,
+            label: statusLabel
+          });
+        }
+      }
+    }
     const item = issueToItem(issue, slugMap);
     if (isArchived) {
       archived.push(item);
     } else {
       items.push(item);
     }
+  }
+  if (staleStatusWarnings.length > 0) {
+    console.warn(
+      `\n⚠ ${staleStatusWarnings.length} closed issue(s) have non-terminal status labels — remove or set to status:done:`
+    );
+    for (const w of staleStatusWarnings) {
+      console.warn(`  #${w.number} → ${w.label}`);
+    }
+    console.warn(
+      `Fix: gh issue edit <#> --repo ${repo} --remove-label "<label>"\n`
+    );
   }
   return { items, archived };
 }
@@ -318,10 +323,7 @@ function latestNote(item) {
 // ---------------------------------------------------------------------------
 
 function renderHeader() {
-  const sourceDesc =
-    BACKEND === "github"
-      ? `GitHub Issues in \`${REPO}\``
-      : "`backlog.yaml`";
+  const sourceDesc = `GitHub Issues in \`${REPO}\``;
   return [
     `# ${PROJECT_NAME} Backlog`,
     "",
@@ -333,6 +335,14 @@ function renderHeader() {
 function renderExecutiveSummary(items) {
   const lines = ["## Executive Summary", ""];
   const now = new Date();
+
+  // Needs-review (flagged for the tech-team review) — surface FIRST
+  const needsReview = items.filter((i) => i.needs_review);
+  if (needsReview.length) {
+    lines.push(
+      `- **${needsReview.length} item(s) flagged for tech-team review:** ${needsReview.map((i) => i.id).join(", ")} (see [Needs Review](#needs-review))`
+    );
+  }
 
   // In-progress items
   const inProgress = items.filter((i) => i.status === "In Progress");
@@ -384,6 +394,33 @@ function renderExecutiveSummary(items) {
     }
   }
 
+  lines.push("");
+  return lines;
+}
+
+function renderNeedsReview(items) {
+  const flagged = items.filter((i) => i.needs_review);
+  const lines = ["## Needs Review", ""];
+  if (flagged.length === 0) {
+    lines.push(
+      "No items flagged. Apply the `needs-review` label to flag an issue for the next tech-team review.",
+      ""
+    );
+    return lines;
+  }
+  lines.push(
+    "Items flagged for the tech-team review.",
+    "",
+    "| ID | Title | Category | Status | Priority | Assigned |",
+    "|----|-------|----------|--------|----------|----------|"
+  );
+  for (const item of flagged) {
+    const assigned = item.assigned_to || "";
+    const idCell = item.url ? `[${item.id}](${item.url})` : item.id;
+    lines.push(
+      `| ${idCell} | ${item.title} | ${item.category} | ${item.status} | ${pad(item.priority)} | ${assigned} |`
+    );
+  }
   lines.push("");
   return lines;
 }
@@ -555,10 +592,7 @@ function renderRecentlyUpdated(items) {
 }
 
 function renderFooter(archivedCount) {
-  const archiveDesc =
-    BACKEND === "github"
-      ? "closed issues with the `archived` label"
-      : "`archive.yaml`";
+  const archiveDesc = "closed issues with the `archived` label";
   return [
     "---",
     "",
@@ -572,29 +606,9 @@ function renderFooter(archivedCount) {
 // ---------------------------------------------------------------------------
 
 function main() {
-  let items, archived;
-
-  if (BACKEND === "github") {
-    const result = loadFromGitHub(REPO);
-    items = result.items;
-    archived = result.archived;
-  } else {
-    let backlogData, archiveData;
-    try {
-      backlogData = loadYaml(BACKLOG_PATH);
-    } catch (err) {
-      console.error(`Error reading backlog.yaml: ${err.message}`);
-      process.exit(1);
-    }
-    try {
-      archiveData = loadYaml(ARCHIVE_PATH);
-    } catch (err) {
-      console.error(`Error reading archive.yaml: ${err.message}`);
-      process.exit(1);
-    }
-    items = (backlogData && backlogData.items) || [];
-    archived = (archiveData && archiveData.items) || [];
-  }
+  const result = loadFromGitHub(REPO);
+  const items = result.items;
+  const archived = result.archived;
 
   const archivedCount = archived.length;
 
@@ -603,6 +617,7 @@ function main() {
   const sections = [
     ...renderHeader(),
     ...renderExecutiveSummary(items),
+    ...renderNeedsReview(items),
     ...renderSummaryTable(items, archivedCount),
     ...renderCategoryMatrix(items, categories),
     ...renderPriorityBoard(items),
@@ -615,7 +630,7 @@ function main() {
 
   const output = sections.join("\n");
   fs.writeFileSync(OUTPUT_PATH, output, "utf8");
-  const srcLabel = BACKEND === "github" ? ` (source: ${REPO})` : "";
+  const srcLabel = ` (source: ${REPO})`;
   console.log(
     `Rendered ${path.relative(REPO_ROOT, OUTPUT_PATH)} — ${items.length} active items, ${archivedCount} archived${srcLabel}.`
   );

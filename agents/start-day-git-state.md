@@ -5,7 +5,7 @@ description: >
   <example>
   Context: Daily planning briefing — checking for uncommitted changes and branch status.
   user: "/start-day"
-  assistant: "Dispatching git-state agent to analyze repository state, WI branches, and check for org metadata drift."
+  assistant: "Dispatching git-state agent to analyze repository state, feature branches, and check for org metadata drift."
   <commentary>This agent runs git commands and optionally queries the org for drift detection. It uses the drift-compare.js script if available.</commentary>
   </example>
 model: inherit
@@ -17,13 +17,13 @@ tools: ["Read", "Bash", "Grep", "Glob", "mcp__Salesforce-DX__run_soql_query"]
 
 ## Your Job
 
-Gather the current git repository state and check for org metadata drift. Report recent commits, uncommitted changes, local vs origin status, WI branches, and any drifted components assigned to the current user.
+Gather the current git repository state and check for org metadata drift. Report recent commits, uncommitted changes, local vs origin status, feature branches, and any drifted components assigned to the current user.
 
 ## Reference Files
 
 - Read `docs/platform-brief.md` for current initiative phases and key areas
-- Read `.claude/memory/MEMORY.md` Active Work Items table for WI branch cross-reference
-- Read `docs/backlog/backlog.yaml` for assignment-aware drift filtering (match `assigned_to` and `devops_wis`)
+- Read `.claude/memory/MEMORY.md` Active Work Items table for feature branch cross-reference
+- Read `docs/backlog/backlog.yaml` for assignment-aware drift filtering (match `assigned_to` and Issue references)
 
 ## Inputs
 
@@ -51,7 +51,7 @@ git rev-list --count origin/main..main 2>/dev/null || echo "0"
 ```
 
 ```bash
-git branch -r 2>/dev/null | grep 'origin/WI-' || echo "none"
+git branch -r 2>/dev/null | grep 'origin/feature/' || echo "none"
 ```
 
 ### 2. Org Drift Check
@@ -82,13 +82,13 @@ If both approaches fail (auth expired, org unreachable), report: `[SKIP] Org dri
 
 ### 3. Assignment-Aware Drift Filtering
 
-After retrieving the drift list, read `docs/backlog/backlog.yaml` and cross-reference drifted components against the current user's assigned WIs:
+After retrieving the drift list, read `docs/backlog/backlog.yaml` and cross-reference drifted components against the current user's assigned Issues:
 
 1. Find backlog items where `assigned_to` matches {{currentUserName}}
-2. Get the `devops_wis` from those items
+2. Get the Issue references from those items
 3. Categorize drift into:
-   - **Your drift** — components belonging to WIs assigned to you (actionable)
-   - **Other drift** — components from other team members' WIs (summary count only)
+   - **Your drift** — components belonging to Issues assigned to you (actionable)
+   - **Other drift** — components from other team members' Issues (summary count only)
 
 If {{currentUserName}} could not be resolved, show all drift without filtering.
 
@@ -102,7 +102,7 @@ Return your findings in this exact markdown structure:
 **Last commit:** {hash} — {message} ({relative date})
 **Uncommitted changes:** {n} files ({categories}) or "Clean"
 **Local vs origin:** {n} commits ahead or "Up to date"
-**WI branches on origin:** {n} branches
+**Feature branches on origin:** {n} branches
 
 {If uncommitted changes exist:}
 **Note:** Uncommitted changes detected — may be leftover from a prior session that didn't /wrap-up.
@@ -113,16 +113,16 @@ Return your findings in this exact markdown structure:
 [SKIP] Org drift check skipped (--quick).
 
 {If drift found for current user:}
-**Your drifted components:** {n} (from WIs assigned to you)
-- {MetadataType}: {ComponentName} (WI-NNNNNN)
+**Your drifted components:** {n} (from Issues assigned to you)
+- {MetadataType}: {ComponentName} (#NN)
 - ...
 
-**Other drift:** {n} components from other team members' WIs — do not retrieve without coordinating
+**Other drift:** {n} components from other team members' Issues — do not retrieve without coordinating
 
 **Action:** Run `/detect-drift` to retrieve your changes, or `sf project retrieve start --target-org {{devOrgAlias}} --metadata {specific types}` for targeted retrieval.
 
 {If no drift for current user:}
-No org drift on your assigned WIs — local source is current.
+No org drift on your assigned Issues — local source is current.
 
 {If drift check failed:}
 [SKIP] Org drift check — {error}

@@ -427,7 +427,7 @@ Write findings to `{CHECKPOINT_DIR}/analytics.findings.json` (ID prefix: `ANL-`)
 
 ## Step 7 — DevOps Expert
 
-**Persona context:** You are a Salesforce DevOps specialist evaluating the development pipeline, tooling, automation, and operational efficiency. The team may use DevOps Center or GitHub Actions as their DevOps backend — check `workTracking.backend` in the resolved context. Evaluate using SF CLI and Claude Code skills.
+**Persona context:** You are a Salesforce DevOps specialist evaluating the development pipeline, tooling, automation, and operational efficiency. The DevOps backend is GitHub Actions with GitHub Issues for work tracking. Evaluate using SF CLI and Claude Code skills.
 
 ### Scope
 
@@ -436,7 +436,7 @@ Write findings to `{CHECKPOINT_DIR}/analytics.findings.json` (ID prefix: `ANL-`)
 - `.claude/commands/` — skill chain analysis
 - `config/` — configuration files
 - `manifest/` and `manifests/` — deployment manifests
-- Org query: work item pipeline metrics (DevOps Center SOQL or `gh issue list`)
+- GitHub query: Issue pipeline metrics (`gh issue list`)
 
 ### Examination
 
@@ -448,12 +448,6 @@ Write findings to `{CHECKPOINT_DIR}/analytics.findings.json` (ID prefix: `ANL-`)
 
 2. **Pipeline health:**
 
-   **If `workTracking.backend` == `"devops-center"`:**
-   - Query WI status distribution: `SELECT Status, COUNT(Id) cnt FROM WorkItem GROUP BY Status`
-   - Identify bottlenecks: items stuck in review, stale WIs, promotion queue depth
-   - Assess branching strategy: WI branch pattern, main branch protection
-
-   **If `workTracking.backend` == `"github-actions"`:**
    - Query Issue status distribution: `gh issue list --state all --json labels --limit 200` and count by `status:*` labels
    - Identify bottlenecks: Issues with `blocked` label, stale in-progress Issues, open PR queue
    - Assess branching strategy: feature branch naming, PR merge strategy, branch protection rules
@@ -475,7 +469,7 @@ Write findings to `{CHECKPOINT_DIR}/analytics.findings.json` (ID prefix: `ANL-`)
 6. **Toolset evaluation:**
    - **SF CLI plugins:** Are there newer/better plugins for tasks currently done manually? Check for alternatives to installed plugins
    - **MCP servers:** Are there additional MCP servers that could extend Claude Code capabilities?
-   - **CI/CD tooling:** Evaluate the current pipeline (DevOps Center or GitHub Actions). Are there gaps in pre-deploy validation, scheduled org health checks, or automated testing?
+   - **CI/CD tooling:** Evaluate the current GitHub Actions pipeline. Are there gaps in pre-deploy validation, scheduled org health checks, or automated testing?
    - **Testing tools:** Evaluate E2E testing options for screen flows, static analysis tools
    - **Developer experience:** IDE extensions, code generation tools, documentation generators not yet in use
    - **Reference `docs/tooling-gap-analysis.md`** (if exists) for previously evaluated tools and decisions — do not re-recommend rejected tools without new justification

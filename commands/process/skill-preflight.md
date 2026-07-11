@@ -11,7 +11,7 @@ Run validation checks before executing a skill or deploying metadata. Catches co
 
 Arguments can be:
 
-- A skill name: `doc-flows`, `doc-components`, `kb-gap-analysis`, `kb-publish`, `devops-commit`, `deploy-changed`, `detect-drift`, `test-flows`, `wi-sync`, `lookback`
+- A skill name: `doc-flows`, `doc-components`, `kb-gap-analysis`, `kb-publish`, `deploy-changed`, `detect-drift`, `test-flows`, `lookback`
 - A check suite: `git`, `org`, `metadata`, `flows`, `kb`
 - Multiple comma-separated: `git, org` or `doc-flows, kb-publish`
 - Empty — runs all check suites
@@ -44,7 +44,6 @@ Each suite is a group of related checks. When preflight is called with a skill n
 | `doc-components`  | `git`, `org`, `metadata`, `lwc`                       |
 | `kb-gap-analysis` | `git`, `org`, `kb`                                    |
 | `kb-publish`      | `git`, `org`, `kb`                                    |
-| `devops-commit`   | _(inline only — circular dependency, see note below)_ |
 | `design-review`   | `git`, `metadata`                                     |
 | `validate-build`  | `git`, `org`, `lwc`                                   |
 | `deploy-changed`  | `git`, `org`, `metadata`, `lwc`                       |
@@ -52,11 +51,8 @@ Each suite is a group of related checks. When preflight is called with a skill n
 | `test-flows`      | `git`, `org`, `metadata`                              |
 | `wrap-up`         | `git`                                                 |
 | `package-audit`   | `org`                                                 |
-| `wi-sync`         | `git`, `org`                                          |
 | `lookback`        | `git`                                                 |
 | `platform-review` | `git`, `org`, `metadata`                              |
-
-> **Note:** `devops-commit` runs git and org checks inline rather than invoking `/skill-preflight`. This avoids circular dependencies — `devops-commit` is called by `/wrap-up` and suggested by `/deploy-changed`.
 
 ---
 
@@ -77,13 +73,11 @@ Classify as:
 - **Warning** — unstaged modifications to metadata files (`{context.metadataPath}/`)
 - **Blocker** — staged changes that haven't been committed (risk of accidental inclusion in next commit)
 
-For `devops-commit` preflight: a blocker-level staged change is critical — the cherry-pick will fail or include unintended files.
-
 ### G2 — Branch Check
 
 Report the current branch. Flag if:
 
-- On a `WI-*` branch instead of `main` (unexpected for most skill runs)
+- On a branch that doesn't match the work at hand (e.g., a metadata build sitting on `main` when hooks expect feature branches)
 - Detached HEAD state
 - Branch is behind `origin/main` by more than 5 commits
 
@@ -120,7 +114,6 @@ If unreachable and target is production, suggest: `sf org login web --alias {con
 
 Some skills interact with two orgs. Check the secondary org only when needed:
 
-- `devops-commit` (inline): `{context.orgs.productionAlias}` for WI queries + `{context.orgs.devAlias}` for deploy
 - `doc-flows`: `{context.orgs.productionAlias}` for freshness queries (if target-org is the dev sandbox for deploy)
 
 Run the same connectivity query against the secondary org and report status.
@@ -455,7 +448,6 @@ When a skill targets a production org, apply the appropriate safety gate tier. E
 | `doc-components`               | 1    | Read-only org queries for verification           |
 | `kb-gap-analysis`              | 1    | Read-only Knowledge article queries              |
 | `deploy-changed`               | 2    | Deploys metadata to target org                   |
-| `devops-commit` (deploy step)  | 2    | Deploys metadata to dev sandbox                  |
 | `test-flows` (when deploying)  | 2    | Deploys FlowTest metadata                        |
 | `kb-publish`                   | 2    | Creates/updates Knowledge articles in production |
 | `platform-review`              | 1    | Read-only queries and source file analysis       |

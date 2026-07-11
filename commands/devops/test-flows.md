@@ -431,7 +431,7 @@ Report any validation issues. Offer to fix automatically where possible (e.g., t
    Or run all Apex + Flow tests together: `sf logic run test --target-org {target-org}`
    UI alternative: Setup > Flows > {FlowName} > View Tests > Run All
 5. **Fix failures and iterate** — re-run `/test-flows {FlowName}` to regenerate after flow changes
-6. **Commit:** `/devops-commit WI-{number}`
+6. **Commit:** commit on the feature branch, push, and open a PR (`gh pr create`)
 ```
 
 ---

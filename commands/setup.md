@@ -79,22 +79,12 @@ If `config/sf-toolkit.json` doesn't exist, walk the developer through creating i
 
 2. **Search keywords:** Ask what keywords to use for `/release-review` and `/tooling-review` searches (e.g., "salesforce OR deploy OR sandbox OR production"). Explain these filter release notes and tooling updates.
 
-3. **Backlog backend:** Ask "yaml" (file-based, works immediately) or "salesforce" (custom object — requires additional setup). Default to yaml. (This may be overridden by the DevOps backend choice below.)
+3. **Backlog backend:** Ask "github-issues" (GitHub Issues — recommended), "yaml" (file-based, works immediately), or "salesforce" (custom object — requires additional setup). Default to github-issues.
 
-4. **DevOps backend:** Ask which DevOps backend this project uses:
-   - **SF DevOps Center** (default) — Work Items, DOC pipeline, SOQL-based tracking
-   - **GitHub Actions** — GitHub Issues for tracking, GHA workflows for CI/CD, PR-based promotion
-
-   If "GitHub Actions" is selected:
+4. **DevOps environments:** DevOps runs on GitHub Actions — GitHub Issues for tracking, GHA workflows for CI/CD, PR-based promotion.
    - Set `devops.backend` to `"github-actions"`
    - Ask which environments are managed by GHA (default: `["staging", "production"]`)
    - Ask which environments allow local deploys (default: `["dev"]`)
-   - Override `backlog.backend` to `"github-issues"` (inform the user: "Backlog will use GitHub Issues since you're using GitHub Actions for DevOps.")
-   
-   If "SF DevOps Center" is selected (or default):
-   - Set `devops.backend` to `"devops-center"`
-   - Set `devops.environments.managed` to `[]`
-   - Set `devops.environments.local` to `["dev", "staging", "production"]`
 
 Write the file:
 
@@ -106,10 +96,10 @@ Write the file:
     "{email}": "{name}"
   },
   "backlog": {
-    "backend": "{yaml|salesforce}"
+    "backend": "{github-issues|yaml|salesforce}"
   },
   "devops": {
-    "backend": "{devops-center|github-actions}",
+    "backend": "github-actions",
     "environments": {
       "local": ["{env aliases for local deploy}"],
       "managed": ["{env aliases managed by GHA}"]
@@ -126,9 +116,9 @@ Write the file:
 }
 ```
 
-5. **GitHub label bootstrapping** (GHA mode only):
+5. **GitHub label bootstrapping:**
 
-   If `devops.backend` is `"github-actions"`, create the label taxonomy in the GitHub repo. Derive the repo from `git remote get-url origin`.
+   Create the label taxonomy in the GitHub repo. Derive the repo from `git remote get-url origin`.
 
    Run these commands (idempotent — `gh label create` skips existing labels):
 
@@ -153,8 +143,7 @@ Write the file:
 
    # Status
    gh label create "status:captured" --description "Backlog: captured" --color "E4E669" --force
-   gh label create "status:groomed" --description "Backlog: groomed/evaluated" --color "E4E669" --force
-   gh label create "status:prioritized" --description "Backlog: prioritized" --color "E4E669" --force
+   gh label create "status:groomed" --description "Backlog: groomed/evaluated (includes prioritization)" --color "E4E669" --force
    gh label create "status:in-progress" --description "Backlog: in progress" --color "1D76DB" --force
    gh label create "status:deferred" --description "Backlog: deferred" --color "E4E669" --force
 
@@ -202,8 +191,6 @@ Copy templates for any missing files. Only create files that don't already exist
 
 | Missing File | Template Source (from plugin) | Notes |
 |---|---|---|
-| `docs/backlog/backlog.yaml` | `templates/backlog.yaml` | Only if backend is "yaml" |
-| `docs/backlog/tags.yaml` | `templates/tags.yaml` | Only if backend is "yaml" |
 | `docs/flows/flow-categories.json` | Write `{}` | Empty signals /doc-flows first-run |
 | `docs/components/skip-list.json` | Write `[]` | Empty skip list |
 | `docs/coding-standards.md` | `templates/coding-standards.md.template` | Tell user to customize |
@@ -251,7 +238,7 @@ If `CLAUDE.md` doesn't exist:
    - `{{PROJECT_DESCRIPTION}}`: one paragraph about the project
    - `{{MANAGED_PACKAGE_NOTES}}`: what middleware/packages handle integrations
    - `{{LICENSE_TYPES}}`: license types in use (e.g., "Enterprise (internal), Community Plus (partners)")
-   - `{{ORG_SPECIFIC_DEVOPS_NOTES}}`: project-specific DevOps pipeline notes (DevOps Center or GitHub Actions)
+   - `{{ORG_SPECIFIC_DEVOPS_NOTES}}`: project-specific DevOps pipeline notes (GitHub Actions)
    - `{{PROJECT_SPECIFIC_WARNINGS}}`: any additional critical warnings
    - `{{DATA_MODEL_SUMMARY}}`: key objects and their relationships (can reference a KB doc)
 3. Replace placeholders and write the file
@@ -274,12 +261,6 @@ Same pattern as CLAUDE.md:
 
 1. Run `sf org display --target-org {dev-alias} --json` — verify dev sandbox is reachable
 2. Run `sf org display --target-org {production-alias} --json` — verify production is reachable
-
-**If `devops.backend` == `"devops-center"`:**
-3. Query `SELECT Id, Name FROM DevopsProject` against production — verify DevOps Center is configured
-4. Report results: connected/unreachable for each org, DevOps Center project name(s)
-
-**If `devops.backend` == `"github-actions"`:**
 3. Run `gh auth status` — verify GitHub CLI is authenticated
 4. Run `gh repo view --json name,owner` — verify repo access
 5. Report results: connected/unreachable for each org, GitHub repo name, gh auth status
@@ -340,7 +321,7 @@ SF TOOLKIT SETUP — COMPLETE
 Project: {name}
 Dev Org: {alias} — {connected/unreachable}
 Production: {alias} — {connected/unreachable}
-DevOps Backend: {devops-center: project name | github-actions: repo name | "not configured"}
+DevOps Backend: GitHub Actions — {repo name | "not configured"}
 
 Created:
   ✓ config/sf-toolkit.json

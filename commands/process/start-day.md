@@ -76,7 +76,7 @@ Dispatch 3 purpose-built agents in parallel to gather independent data. Each age
 ### Agent Prompt Files
 
 1. `start-day-git-state` agent — Git state + org drift check
-2. `start-day-active-work` agent — Memory + backlog + work tracking backend merge
+2. `start-day-active-work` agent — Memory + backlog + GitHub Issues merge
 3. `start-day-external-context` agent — Calendar, email, Slack
 
 ### Variable Substitution
@@ -120,7 +120,7 @@ Agent 3: start-day-external-context
 Each agent returns structured markdown sections. Combine them into the data set for Steps 4-6:
 
 - **Git State Agent** → provides: Git State section, Org Drift section
-- **Active Work Agent** → provides: Active Work section (your work / team / unassigned), pending decisions, blocked items, WI drift, assignment drift
+- **Active Work Agent** → provides: Active Work section (your work / team / unassigned), pending decisions, blocked items, Issue status drift, assignment drift
 - **External Context Agent** → provides: Calendar section, Email section, Slack section
 
 Present the combined results to the user in order: Git State → Org Drift → Active Work → Calendar → Email → Slack.
@@ -141,7 +141,7 @@ Three tiers of degradation:
 
 1. Run `git log --oneline -5` directly
 2. Read `docs/backlog/backlog.yaml` for In Progress items
-3. Read memory files for WI status
+3. Read memory files for Issue status
 4. Skip external context entirely
 5. Report: `[DEGRADED] Full briefing unavailable — showing minimal git + backlog state`
 
@@ -157,9 +157,9 @@ Scan memory files for open work **not already covered by Step 2 (active work) or
 
 - Cleanup tasks noted in project memories (orphaned metadata, stale docs, etc.)
 - Items flagged as "next step", "pending", "open" that aren't tracked in backlog
-- Sync notes or verification flags from memory (e.g., "verify WI-000016 status")
+- Sync notes or verification flags from memory (e.g., "verify #116 status")
 
-Skip items that are already tracked in the backlog — check `devops_wis` cross-references to avoid duplicates.
+Skip items that are already tracked in the backlog — check Issue cross-references to avoid duplicates.
 
 ### 4a-bis — Backlog Pipeline
 
@@ -205,8 +205,8 @@ If `docs/backlog/backlog.yaml` does not exist, report `[SKIP] No backlog file fo
 Check for signals in the repo:
 
 - `.pending-docs.txt` — flows queued for `/doc-flows` documentation
-- Uncommitted `force-app/` changes that may need a WI branch
-- WI branches that exist on origin but may not be deployed/promoted
+- Uncommitted `force-app/` changes that may need a feature branch
+- Feature branches that exist on origin without an open or merged PR
 
 ### 4c — External-sourced items (from Step 3)
 
@@ -273,8 +273,8 @@ Report:
 Rank all open items into a single prioritized list using these criteria:
 
 1. **Assigned to you** — items from "Your Active Work" (Step 2) rank highest. These are _your_ work — they come first regardless of priority level.
-2. **In-flight work** — items with branches, partial deploys, or active WIs come first (momentum). Both WI-backed and backlog-only items count equally if In Progress.
-3. **Assignment-aware gating** — drift items, WIs, and backlog items assigned to other team members must **never** appear in "Do Today" or session recommendations, even as quick wins. They belong in "Team Active Work" reporting only. Unassigned items can appear in "Do Today" only for the backlog manager or if the item has no WI (pure backlog-only).
+2. **In-flight work** — items with branches, partial deploys, or active Issues come first (momentum). Both Issue-backed and backlog-only items count equally if In Progress.
+3. **Assignment-aware gating** — drift items, Issues, and backlog items assigned to other team members must **never** appear in "Do Today" or session recommendations, even as quick wins. They belong in "Team Active Work" reporting only. Unassigned items can appear in "Do Today" only for the backlog manager or if the item has no Issue (pure backlog-only).
 4. **Unblocked dependencies** — items that unblock other items rank higher
 5. **Quick wins** — small items (<30 min) that clear clutter
 6. **Business impact** — revenue and security initiatives over housekeeping (read CLAUDE.md and `docs/platform-brief.md` for current initiative priorities)
@@ -337,7 +337,7 @@ Expected outcome: {what's done by end of session}
 
 **Prompt starter:**
 \```
-{a natural-language prompt that would initiate Option A's work, e.g., "Deploy the notification types (WI-000044) and permission sets (WI-000045), then run /devops-commit for each."}
+{a natural-language prompt that would initiate Option A's work, e.g., "Deploy the notification types (#44) and permission sets (#45), then commit, push the branch, and open a PR."}
 \```
 
 **Option B — {theme}** ({estimated scope})
@@ -365,9 +365,9 @@ If `focusTopic` is set, both options should center on that workstream.
 
 Criteria for good prompt starters:
 
-- **Specific and actionable** — name the exact WIs, files, or skills involved so Claude can start immediately without clarification
+- **Specific and actionable** — name the exact Issues, files, or skills involved so Claude can start immediately without clarification
 - **Scoped to the session plan** — covers the full sequence of tasks in the option, not just the first one
-- **Includes skill invocations** where appropriate (e.g., `/deploy-changed`, `/devops-commit WI-NNNNNN`, `/doc-flows`)
+- **Includes skill invocations** where appropriate (e.g., `/deploy-changed`, `/doc-flows`)
 - **One prompt per option** — the user picks an option and pastes the prompt to go
 
 ### Lookback Cadence Check
@@ -473,10 +473,10 @@ If the last review is within 7 days, skip silently.
 ## Behavior Notes
 
 - **Read-only.** This skill does not modify files, deploy, or commit. It gathers context and presents a plan.
-- **Memory is context, not truth.** Memory entries may be stale. When a memory claims something exists or has a certain status, note it but flag if verification is needed (e.g., "WI-000021 — memory says Done/Verify, confirm in org").
+- **Memory is context, not truth.** Memory entries may be stale. When a memory claims something exists or has a certain status, note it but flag if verification is needed (e.g., "#21 — memory says Done/Verify, confirm in org").
 - **Don't overwhelm.** If there are 30+ open items, summarize the lower-priority ones rather than listing every detail. The goal is a clear, actionable plan — not an exhaustive inventory.
 - **Respect focus.** When `--focus` is set, the user wants to zoom in. Keep other workstreams to a one-line mention, not full tables.
 - **No time estimates.** Avoid giving time predictions. Use effort labels (Small / Medium / Large) instead of hours.
 - **Graceful degradation.** If Outlook or Slack MCP servers are not connected, log which source was unavailable and continue with the rest. The briefing should never fail because an external tool is down.
 - **Privacy-conscious.** Summarize email/Slack content — don't dump full message bodies into the briefing. Keep summaries to one line per item.
-- **Deduplication.** The same item may surface from multiple sources (e.g., a Slack message about a WI that's also in memory). Merge duplicates and note all sources.
+- **Deduplication.** The same item may surface from multiple sources (e.g., a Slack message about an Issue that's also in memory). Merge duplicates and note all sources.
