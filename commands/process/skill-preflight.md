@@ -1,6 +1,6 @@
 ---
 name: skill-preflight
-description: Pre-run validation checks for git state, org connectivity, metadata files, flows, and Knowledge Base articles
+description: Pre-run validation checks for git state, org connectivity, metadata files, flows, and Knowledge Base articles. Use before running a skill that touches the org or commits work, or when someone asks whether the workspace is ready, or why a skill keeps failing on setup.
 ---
 
 # /skill-preflight — Pre-Run Validation Checks

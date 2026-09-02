@@ -1,6 +1,6 @@
 ---
 name: test-flows
-description: Native FlowTest metadata generator for record-triggered flows
+description: Generate native FlowTest metadata for record-triggered flows. Use when someone asks for tests for a flow, wants flow test coverage, mentions FlowTest, or is building a record-triggered flow test-first. Deploys the generated tests to the resolved sandbox — confirm the target org before running.
 ---
 
 # /test-flows — Native Flow Test Generator

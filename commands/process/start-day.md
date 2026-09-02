@@ -1,6 +1,6 @@
 ---
 name: start-day
-description: Daily planning briefing — calendar, email, Slack, git state, and memory for a prioritized work plan
+description: Daily planning briefing — calendar, email, Slack, git state, and memory folded into a prioritized work plan. Use when someone starts their day, asks what they should work on, or wants a catch-up on where things stand after time away.
 ---
 
 # /start-day — Daily Planning Briefing

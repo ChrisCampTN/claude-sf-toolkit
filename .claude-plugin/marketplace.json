@@ -1,5 +1,6 @@
 {
   "name": "claude-sf-toolkit",
+  "description": "Salesforce DX skills, agents, and project scaffolding for Claude Code — deployment, drift detection, flow documentation, platform review, and backlog management for SFDX projects on a GitHub-based pipeline",
   "owner": {
     "name": "Chris Camp",
     "email": "chris.camp@paybyhfa.com"

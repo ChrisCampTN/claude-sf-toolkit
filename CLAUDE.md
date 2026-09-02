@@ -27,7 +27,7 @@
 - `workTracking` context in cache abstracts work-tracking details: skills read `workTracking.*` fields, not hardcoded commands
 - Resolver agent populates `workTracking` from config + the git remote (`issueRepo`)
 - `workTracking.deployManagedEnvs`: deploy-changed warns when targeting these environments
-- Backlog workflow file: `commands/process/backlog-workflows/github-actions.md` — parent `backlog.md` delegates to it (explicit `backlog.backend` override supports yaml/salesforce)
+- Backlog workflow file: `commands/process/backlog-workflows/github-actions.md` — parent `backlog.md` delegates to it. GitHub Issues is the only backlog backend as of v2.0.0. The file deliberately has no frontmatter: it is reference material loaded via `${CLAUDE_PLUGIN_ROOT}`, not an invocable command
 - `/validate-build` gate: PRs should complete validate-build first (--skip-validation to bypass)
 - `.last-validate-build` marker: written by validate-build, referenced in the PR workflow guidance. Format: `{YYYY-MM-DD}|{#NN}|{summary}`. Same-day + matching ref = valid. Gitignored.
 
@@ -65,7 +65,7 @@ After significant changes, run the plugin-dev skills for best-practice validatio
 - `/plugin-dev:hook-development` — verify hooks.json format, event registration, `$CLAUDE_ENV_FILE` usage
 - `/plugin-dev:skill-development` — verify command descriptions, progressive disclosure, writing style
 - `/plugin-dev:plugin-settings` — verify per-project state patterns (`.claude/` directory, gitignore)
-- Use the `superpowers:code-reviewer` agent for a cross-cutting review against all checks at once
+- Use the built-in `code-review` skill (`/code-review high`) for a cross-cutting review against all checks at once — `superpowers` ships no `code-reviewer` agent
 
 ## Distribution
 - Install requires two commands in the same session: `claude plugin marketplace add ChrisCampTN/claude-sf-toolkit && claude plugin install claude-sf-toolkit --scope project`

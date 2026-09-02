@@ -1,6 +1,6 @@
 ---
 name: validate-build
-description: Interactive post-build validation — walk through deployed features against design spec, capture pass/fail/adjust verdicts
+description: Interactive post-build validation — walk through deployed features against the design spec, capturing pass/fail/adjust verdicts and a build report. Use after a build lands and someone asks to verify it, sign off on an issue, or produce the validation attestation a production deploy needs.
 ---
 
 # /validate-build — Interactive Build Validation

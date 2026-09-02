@@ -1,4 +1,5 @@
 ---
+name: sf-toolkit-resolve
 description: >
   Use this agent when a skill needs Salesforce project context (org aliases, API version, GitHub repo, team mapping). Every SF Toolkit skill dispatches this agent unless a valid cache exists.
 

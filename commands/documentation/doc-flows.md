@@ -1,6 +1,6 @@
 ---
 name: doc-flows
-description: Generate technical documentation for Salesforce flows — individual docs, category indexes, XML descriptions
+description: Generate technical documentation for Salesforce flows — individual docs, category indexes, and the flow XML description fields. Use when someone asks to document a flow, refresh the flow docs or flow index, or after deploying flow changes that leave the docs stale.
 ---
 
 # /doc-flows — Salesforce Flow Technical Documentation

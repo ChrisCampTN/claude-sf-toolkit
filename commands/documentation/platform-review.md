@@ -1,6 +1,6 @@
 ---
 name: platform-review
-description: Multi-persona platform review (Security, QA, Standards, Docs, Agentforce, Analytics, DevOps) — produces prioritized findings report
+description: Multi-persona platform review (Security, QA, Standards, Docs, Agentforce, Analytics, DevOps) producing a prioritized findings report. Use when someone asks for an org health check, a security or quality audit, a technical-debt review, or a broad "what should we fix next" assessment.
 ---
 
 # /platform-review — Multi-Persona Platform Review

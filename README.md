@@ -85,9 +85,9 @@ Run `/setup --check` anytime for a project health report.
 
 | Skill | Description | Key Parameters |
 |-------|-------------|----------------|
-| `/backlog` | Upstream backlog management (YAML or Salesforce backend) | subcommand: `add`, `evaluate`, `graduate`, `search`, `render` |
+| `/backlog` | Upstream backlog management (GitHub Issues backend) | subcommand: `add`, `evaluate`, `graduate`, `search`, `render` |
 | `/start-day` | Daily planning briefing (calendar, email, Slack, git, memory) | `--no-external` |
-| `/wrap-up` | End-of-session checklist (commit, staleness, memory, lookback) | — |
+| `/wrap-up` | End-of-session checklist (commit, staleness, memory, Issue status) | `--review`, `--skip-*` |
 | `/skill-preflight` | Pre-run validation checks | skill name |
 | `/lookback` | Retrospective and shared feedback review | — |
 

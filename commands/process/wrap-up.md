@@ -1,6 +1,6 @@
 ---
 name: wrap-up
-description: End-of-session checklist — commit outstanding work, check docs staleness, maintain memory, check Issue status
+description: End-of-session checklist — commit outstanding work, check docs staleness, maintain memory, check Issue status. Commits and pushes without asking, so reach for it only on an explicit wrap-up request ("wrap up", "finish the session", "/wrap-up") — never inferred from a task simply being done.
 ---
 
 # /wrap-up — End-of-Session Wrap-Up
@@ -24,7 +24,7 @@ Use the returned context for all org references, team lookups, and path resoluti
 Arguments can be:
 
 - Empty — run all checks
-- `--review` — run `code-review:code-review` on session changes before committing (Step 2B)
+- `--review` — run the built-in `code-review` skill on session changes before committing (Step 2B)
 - `--skip-memory` — skip the memory maintenance step
 - `--skip-readme` — skip the README staleness check
 - `--skip-status-check` — skip the Issue status check step
@@ -126,14 +126,21 @@ If `skipMemory` is set, report `[SKIP] Memory maintenance skipped (--skip-memory
 
 ## Step 2B — Code Review (opt-in)
 
-If `runReview` is true, run `code-review:code-review` against the session's changes before committing. This provides a lightweight quality gate — catches bugs, CLAUDE.md compliance issues, and code quality problems that session momentum may have glossed over.
+If `runReview` is true, run the **built-in `code-review` skill** against the session's changes before committing. This provides a lightweight quality gate — catches bugs, CLAUDE.md compliance issues, and code quality problems that session momentum may have glossed over.
 
-1. Identify the diff scope: all uncommitted changes plus any commits made during this session.
-2. Invoke `code-review:code-review` with that scope.
-3. Report findings. If high-confidence issues (score >= 80) are found:
-   - List them with file paths and descriptions
+1. Identify the diff scope. The built-in skill reviews the working diff by default, which is what wrap-up wants in the common case (uncommitted work). If the session already committed, pass the base branch explicitly so the review covers those commits too:
+   - Uncommitted work only → `/code-review high`
+   - Session commits already made → `/code-review high {base-branch}` (usually `main`)
+2. Do **not** pass `--fix` or `--comment`. Wrap-up is a gate before committing: step 3 below asks the developer whether to fix or proceed, and `--fix` would answer that for them. `--comment` posts to a PR, which is not the point at this stage.
+3. Report findings using the skill's own verdicts — it labels each finding `CONFIRMED` or `PLAUSIBLE`:
+   - Report **every `CONFIRMED` finding**.
+   - Report a **`PLAUSIBLE`** finding only when the failure scenario it describes is concrete and reachable in this codebase. Drop the rest — they are the reviewer's uncertain tail and will drown the signal.
+   - List what survives with file paths and descriptions.
    - Ask: "Fix these before committing, or proceed as-is?"
-   - If the user wants fixes, apply them before moving to Step 3.
+   - If the developer wants fixes, apply them before moving to Step 3.
+4. If nothing survives the filter, report `[OK] Code review clean — no confirmed findings.` and continue.
+
+> **Do not filter on a numeric confidence score.** The built-in reviewer does not emit one; a `score >= 80` gate matches nothing and turns `--review` into a silent no-op that always reports clean.
 
 If `runReview` is false (default), skip this step entirely — no message needed.
 

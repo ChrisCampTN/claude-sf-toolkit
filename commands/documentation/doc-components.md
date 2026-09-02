@@ -1,6 +1,6 @@
 ---
 name: doc-components
-description: Generate technical documentation for hybrid component stacks (LWC → Apex → Flow)
+description: Generate technical documentation for hybrid component stacks (LWC to Apex to Flow). Use when someone asks to document a component, an LWC, or a full UI-to-flow stack, or wants component docs refreshed after building or changing one.
 ---
 
 # /doc-components — Hybrid Component Stack Documentation
