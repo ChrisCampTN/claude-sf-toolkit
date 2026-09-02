@@ -1,27 +1,17 @@
 ---
 name: sf-toolkit-resolve
-description: >
-  Use this agent when a skill needs Salesforce project context (org aliases, API version, GitHub repo, team mapping). Every SF Toolkit skill dispatches this agent unless a valid cache exists.
-
-  <example>
-  Context: A skill like /deploy-changed needs to know the target org alias and API version.
-  user: "/deploy-changed"
-  assistant: "Dispatching the sf-toolkit-resolve agent to gather project configuration before building the deployment."
-  <commentary>The resolver agent is dispatched automatically by skills when the cache is missing or expired. It reads project files and queries the org to build a context object.</commentary>
-  </example>
-
-  <example>
-  Context: The resolver cache has expired after 24 hours.
-  user: "/start-day"
-  assistant: "Cache expired — dispatching resolver agent for fresh context before starting the daily briefing."
-  <commentary>Cache-first resolution means the agent only runs when the cache is stale, keeping most skill invocations fast.</commentary>
-  </example>
+description: Use this agent when a skill needs Salesforce project context — org aliases, API version, GitHub repo, team mapping. Every SF Toolkit skill dispatches it unless a valid cache exists. Typical triggers include a skill needing the target org alias before it can build a deployment, and a cached context that has expired ahead of a daily briefing. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: cyan
 tools: ["Read", "Bash", "Grep", "Glob", "Write", "mcp__Salesforce-DX__run_soql_query", "mcp__Salesforce-DX__get_username"]
 ---
 
 # SF Toolkit: Config Resolver
+
+## When to invoke
+
+- **A skill needs project configuration before it can act.** `/deploy-changed` cannot construct a deployment without the target org alias and API version; the resolver reads project files and queries the org to build a context object.
+- **The cached context is missing or stale.** Cache-first resolution means the agent runs only when the cache is absent or expired, so most skill invocations skip it and stay fast.
 
 ## Your Job
 

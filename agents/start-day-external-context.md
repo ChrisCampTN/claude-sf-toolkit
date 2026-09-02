@@ -1,19 +1,16 @@
 ---
 name: start-day-external-context
-description: >
-  Use this agent when /start-day needs external context from calendar, email, and Slack. Runs in parallel with git-state and active-work agents. Skipped when --no-external is passed.
-
-  <example>
-  Context: Daily planning briefing — checking for meetings, emails, and Slack messages.
-  user: "/start-day"
-  assistant: "Dispatching external-context agent to gather today's calendar events, relevant emails, and Slack activity."
-  <commentary>This agent uses MCP integrations for calendar, email, and Slack. It degrades gracefully if MCP servers are unavailable.</commentary>
-  </example>
+description: Use this agent when /start-day needs external context from calendar, email, and Slack. Runs in parallel with the git-state and active-work agents, and is skipped when `--no-external` is passed. Typical triggers include a daily briefing that should surface today's meetings and unread messages, and a session where some MCP integrations are unavailable and the gathering must degrade gracefully. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: magenta
 ---
 
 # Start-Day: External Context Agent
+
+## When to invoke
+
+- **A daily briefing needs today's external context.** Calendar events, relevant email, and Slack activity, gathered in one pass.
+- **An MCP server may not be connected.** Uses MCP integrations per source and degrades gracefully when one is unavailable rather than failing the whole briefing.
 
 ## Your Job
 
