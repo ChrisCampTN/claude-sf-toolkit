@@ -1,6 +1,7 @@
 ---
 name: deploy-changed
 description: Build and execute targeted SF deployments from git changes — filters to deployable metadata, constructs source-dir commands, verifies the result. Deploys to a live org, so reach for it only on an explicit deploy request ("deploy these changes", "push this to the sandbox", "/deploy-changed") — never as an inferred follow-up to finishing a build.
+disable-model-invocation: true
 ---
 
 # /deploy-changed — Deploy Changed Metadata
