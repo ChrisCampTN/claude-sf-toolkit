@@ -1,4 +1,5 @@
 ---
+name: sf-toolkit-platform-brief
 description: >
   Use this agent when generating or refreshing the platform brief (docs/platform-brief.md). Dispatched by /setup during initial configuration and by /platform-review when the brief is stale.
 

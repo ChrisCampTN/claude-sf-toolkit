@@ -1,4 +1,5 @@
 ---
+name: start-day-git-state
 description: >
   Use this agent when /start-day needs git repository state and org drift analysis. Runs in parallel with active-work and external-context agents.
 

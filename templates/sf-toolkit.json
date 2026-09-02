@@ -3,7 +3,7 @@
   "searchKeywordsLastReviewed": "",
   "team": {},
   "backlog": {
-    "backend": "yaml",
+    "backend": "github-issues",
     "categories": []
   },
   "devops": {

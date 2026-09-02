@@ -1,6 +1,6 @@
 ---
 name: release-review
-description: Salesforce release note analysis, feature evaluation, and backlog item proposals
+description: Salesforce release note analysis, feature evaluation, and backlog item proposals. Use at Spring/Summer/Winter release time, or when someone asks what is in the new Salesforce release, which features matter for this org, or wants release features turned into backlog items.
 ---
 
 # /release-review — Salesforce Release Review

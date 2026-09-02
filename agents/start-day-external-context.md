@@ -1,4 +1,5 @@
 ---
+name: start-day-external-context
 description: >
   Use this agent when /start-day needs external context from calendar, email, and Slack. Runs in parallel with git-state and active-work agents. Skipped when --no-external is passed.
 

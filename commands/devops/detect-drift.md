@@ -1,6 +1,6 @@
 ---
 name: detect-drift
-description: Compare org metadata against local git source to find components modified outside the managed pipeline
+description: Compare org metadata against local git source to find components modified outside the managed pipeline. Use when someone asks what changed in the org, whether the org and repo are in sync, who edited a flow directly in Setup, or wants drift checked before a deploy or release.
 ---
 
 # /detect-drift — Detect Org Metadata Drift

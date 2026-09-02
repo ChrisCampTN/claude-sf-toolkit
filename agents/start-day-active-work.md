@@ -1,4 +1,5 @@
 ---
+name: start-day-active-work
 description: >
   Use this agent when /start-day needs a unified view of active work across MEMORY.md, backlog, and GitHub Issues. Runs in parallel with git-state and external-context agents.
 

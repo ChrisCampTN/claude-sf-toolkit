@@ -1,6 +1,6 @@
 ---
 name: design-review
-description: Design document accuracy review against org metadata, source files, and coding standards
+description: Design document accuracy review against org metadata, source files, and coding standards. Use when someone asks whether a design doc is still accurate, wants a spec checked before building from it, or is graduating an issue whose design doc predates recent org changes.
 ---
 
 # /design-review — Design Document Accuracy Review

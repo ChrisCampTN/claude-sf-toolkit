@@ -1,6 +1,6 @@
 ---
 name: tooling-review
-description: SF CLI + MCP Server release tracking — weekly review, quarterly audit, context lookup
+description: SF CLI and MCP server release tracking — weekly review, quarterly audit, and context lookup. Use when someone asks whether the SF CLI or its plugins are current, what changed in a recent CLI release, or which MCP tools are available for a Salesforce task.
 ---
 
 # /tooling-review — SF CLI & MCP Server Tooling Review

@@ -1,6 +1,6 @@
 ---
 name: package-audit
-description: Installed managed package dependency audit
+description: Audit one installed managed package for uninstall planning — enumerate its components, map what depends on them, and classify each as REMOVE / REVIEW / REWORK. Use when someone asks what a package touches, what would break if it were uninstalled, or wants a removal plan for a package they are replacing.
 ---
 
 # /package-audit — Installed Package Dependency Audit

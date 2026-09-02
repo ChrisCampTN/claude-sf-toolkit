@@ -1,6 +1,6 @@
 ---
 name: backlog
-description: Upstream backlog management — add, evaluate, graduate, search, render. GitHub Issues backend.
+description: Upstream backlog management on a GitHub Issues backend — add, evaluate, graduate, search, render. Use when someone asks about the backlog or its dashboard, wants an item captured or triaged, asks what to pick up next, or wants an issue graduated onto a feature branch.
 ---
 
 # /backlog — Backlog Management

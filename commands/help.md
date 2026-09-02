@@ -1,6 +1,6 @@
 ---
 name: help
-description: Interactive skill discovery, usage reference, and topical help for the SF Toolkit plugin
+description: Interactive skill discovery, usage reference, and topical help for the SF Toolkit plugin. Use when someone asks which SF Toolkit skill fits a task, how a specific skill works or what arguments it takes, or what the plugin can do.
 ---
 
 # /help — SF Toolkit Help & Discovery

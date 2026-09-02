@@ -1,6 +1,6 @@
 ---
 name: lookback
-description: Retrospective skill — reviews recent commits, audits existing memories, proposes mechanism + shared memory changes, requires developer approval before writing
+description: Retrospective skill — reviews recent commits, audits existing memories, proposes mechanism plus shared memory changes, and requires developer approval before writing. Use when someone asks for a lookback or retrospective, wants lessons from recent work captured, or after a major workstream closes.
 ---
 
 # /lookback — Retrospective & Shared Feedback Review

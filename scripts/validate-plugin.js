@@ -114,7 +114,7 @@ if (pkgVersion && pluginVersion && marketVersion) {
 
 console.log("\n3. Agent frontmatter");
 
-const REQUIRED_AGENT_FIELDS = ["description", "model", "color"];
+const REQUIRED_AGENT_FIELDS = ["name", "description", "model", "color"];
 const VALID_COLORS = ["blue", "cyan", "green", "yellow", "magenta", "red"];
 const VALID_MODELS = ["inherit", "sonnet", "opus", "haiku"];
 
@@ -211,6 +211,7 @@ const STALE_PATTERNS = [
   { pattern: /\$\(dirname.*realpath/g, label: "$(dirname...realpath...) fragile path pattern" },
   { pattern: /Dispatch the `sf-toolkit-resolve` agent\. Use the returned/g, label: "old resolver dispatch pattern" },
   { pattern: /DevOps Center|devops-center|\/devops-commit|\/wi-sync/g, label: "DevOps Center reference (support removed in v2.0.0)" },
+  { pattern: /code-review:code-review/g, label: "code-review plugin command (not a plugin dependency — use the built-in code-review skill)" },
 ];
 
 const scanDirs = ["commands", "agents"];

@@ -1,6 +1,6 @@
 ---
 name: claude-review
-description: Claude Code + plugin release tracking — weekly review, quarterly audit, context lookup
+description: Claude Code and plugin release tracking — weekly review, quarterly audit, and context lookup for a specific capability area. Use when someone asks what is new in Claude Code, whether the installed plugins have updates, or wants current background on hooks, agents, skills, or MCP before building tooling.
 ---
 
 # /claude-review — Claude Code & Plugin Release Review

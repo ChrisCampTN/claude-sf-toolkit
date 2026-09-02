@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Interactive project bootstrapping and health check for Salesforce DX projects using the SF Toolkit plugin
+description: Interactive project bootstrapping and health check for Salesforce DX projects using the SF Toolkit plugin. Writes config and scaffolding into the project, so reach for it on an explicit request ("set up the toolkit", "/setup --check") rather than inferring it from a project that looks unconfigured.
 ---
 
 # /setup — Project Setup & Health Check
@@ -49,13 +49,13 @@ Report what was found and what's missing. If `sfdx-project.json` doesn't exist, 
 Run the scaffold script or create directories inline:
 
 ```bash
-node "${CLAUDE_PLUGIN_ROOT}/scripts/scaffold-project.js" "$(pwd)" "{backlogBackend}"
+node "${CLAUDE_PLUGIN_ROOT}/scripts/scaffold-project.js" "$(pwd)" "github-issues"
 ```
 
 If the script isn't available, create directories using mkdir:
 
 ```
-docs/backlog/           (only if backlog backend is "yaml")
+docs/backlog/           (holds the generated backlog README.md)
 docs/flows/
 docs/components/
 docs/design/
@@ -79,7 +79,7 @@ If `config/sf-toolkit.json` doesn't exist, walk the developer through creating i
 
 2. **Search keywords:** Ask what keywords to use for `/release-review` and `/tooling-review` searches (e.g., "salesforce OR deploy OR sandbox OR production"). Explain these filter release notes and tooling updates.
 
-3. **Backlog backend:** Ask "github-issues" (GitHub Issues — recommended), "yaml" (file-based, works immediately), or "salesforce" (custom object — requires additional setup). Default to github-issues.
+3. **Backlog backend:** GitHub Issues. The YAML and Salesforce backends were removed in v2.0.0 and `/backlog` no longer implements them, so do not offer a choice — set `backlog.backend` to `"github-issues"`.
 
 4. **DevOps environments:** DevOps runs on GitHub Actions — GitHub Issues for tracking, GHA workflows for CI/CD, PR-based promotion.
    - Set `devops.backend` to `"github-actions"`
@@ -96,7 +96,7 @@ Write the file:
     "{email}": "{name}"
   },
   "backlog": {
-    "backend": "{github-issues|yaml|salesforce}"
+    "backend": "github-issues"
   },
   "devops": {
     "backend": "github-actions",
@@ -254,7 +254,7 @@ If `CLAUDE.md` already exists:
 
 Same pattern as CLAUDE.md:
 
-- If missing: read `templates/README.md.template`, walk through placeholders (`{{PROJECT_NAME}}`, `{{PROJECT_DESCRIPTION}}`, `{{ARCHITECTURE_SUMMARY}}`, `{{TEAM_TABLE}}`), write file
+- If missing: read `${CLAUDE_PLUGIN_ROOT}/templates/README.md.template`, walk through placeholders (`{{PROJECT_NAME}}`, `{{PROJECT_DESCRIPTION}}`, `{{ARCHITECTURE_SUMMARY}}`, `{{TEAM_TABLE}}`), write file
 - If exists: check for completeness, propose additions if needed
 
 ### Step 9: Verify Org Connectivity & DevOps Pipeline
