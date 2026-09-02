@@ -1,6 +1,6 @@
 {
   "name": "claude-sf-toolkit",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Reusable Salesforce DX skills, agents, and project scaffolding for Claude Code",
   "author": "Chris Camp",
   "license": "MIT",

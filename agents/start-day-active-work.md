@@ -1,20 +1,17 @@
 ---
 name: start-day-active-work
-description: >
-  Use this agent when /start-day needs a unified view of active work across MEMORY.md, backlog, and GitHub Issues. Runs in parallel with git-state and external-context agents.
-
-  <example>
-  Context: Daily planning briefing — need to know what work items are active.
-  user: "/start-day"
-  assistant: "Dispatching active-work agent to merge work status from memory, backlog, and GitHub Issues."
-  <commentary>This agent reads local files and queries GitHub Issues to build a unified work status view split by assignment.</commentary>
-  </example>
+description: Use this agent when /start-day needs a unified view of active work across MEMORY.md, the backlog, and GitHub Issues. Runs in parallel with the git-state and external-context agents. Typical triggers include a daily briefing that must report what work is currently active, and a need to see that work split by assignee. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: yellow
 tools: ["Read", "Grep", "Glob", "Bash"]
 ---
 
 # Start-Day: Active Work Agent
+
+## When to invoke
+
+- **A daily briefing needs the active work list.** Merges status from memory, the backlog, and GitHub Issues into a single view rather than three partial ones.
+- **Work needs separating by assignment.** Reads local files and queries Issues to split owned work from unowned.
 
 ## Your Job
 

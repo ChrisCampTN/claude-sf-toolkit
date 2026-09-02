@@ -1,20 +1,17 @@
 ---
 name: sf-toolkit-platform-brief
-description: >
-  Use this agent when generating or refreshing the platform brief (docs/platform-brief.md). Dispatched by /setup during initial configuration and by /platform-review when the brief is stale.
-
-  <example>
-  Context: First-time project setup — no platform-brief.md exists yet.
-  user: "/setup"
-  assistant: "Dispatching platform-brief agent to query the production org and generate the initial platform inventory."
-  <commentary>The platform-brief agent runs org-wide SOQL queries to build a comprehensive metadata inventory.</commentary>
-  </example>
+description: Use this agent when generating or refreshing the platform brief (`docs/platform-brief.md`). Dispatched by /setup during initial configuration and by /platform-review when the brief is stale. Typical triggers include first-time setup where no brief exists yet, and an existing brief whose inventory no longer matches the org. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: green
 tools: ["Read", "Write", "Bash", "Grep", "Glob", "mcp__Salesforce-DX__run_soql_query", "mcp__Salesforce-DX__list_all_orgs"]
 ---
 
 # SF Toolkit: Platform Brief Generator
+
+## When to invoke
+
+- **First-time setup with no brief present.** `/setup` dispatches it to query the production org and generate the initial platform inventory through org-wide SOQL.
+- **An existing brief has gone stale.** `/platform-review` dispatches it when the recorded inventory no longer reflects what is actually in the org.
 
 ## Your Job
 

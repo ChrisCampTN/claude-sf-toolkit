@@ -144,8 +144,24 @@ for (const file of agentFiles) {
     fail(`${name} — invalid model: "${fm.model}" (valid: ${VALID_MODELS.join(", ")})`);
   }
 
-  if (fm.description && !fm.description.includes("<example>")) {
-    warn(`${name} — description has no <example> blocks (recommended for agent triggering)`);
+  // plugin-dev's agent-development skill puts worked scenarios in a
+  // "When to invoke" body section and keeps the description prose, so an
+  // <example> block in the description is now the thing worth flagging —
+  // the inverse of what this check asserted before 2.1.2.
+  if (fm.description) {
+    if (fm.description.includes("<example>")) {
+      warn(
+        `${name} — description contains <example> blocks; put worked scenarios in a "When to invoke" body section and keep the description prose`
+      );
+    }
+    if (!/when to invoke/i.test(fm.description)) {
+      warn(`${name} — description does not point at a "When to invoke" section`);
+    }
+  }
+
+  const agentBody = fs.readFileSync(file, "utf8").replace(/^---\n[\s\S]*?\n---\n/, "");
+  if (!/^##\s+When to invoke/im.test(agentBody)) {
+    warn(`${name} — no "## When to invoke" section in the agent body`);
   }
 }
 
