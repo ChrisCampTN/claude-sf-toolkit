@@ -53,7 +53,7 @@ for plugin in superpowers commit-commands; do
 done
 echo ""
 echo "Recommended (optional):"
-for plugin in context7 skill-creator; do
+for plugin in context7 skill-creator pr-review-toolkit plugin-dev; do
   check "$plugin installed" "echo \"\$PLUGIN_LIST\" | grep -q \"$plugin\"" "Run: claude plugin install $plugin --scope project"
 done
 

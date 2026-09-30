@@ -23,6 +23,15 @@ claude plugin install superpowers --scope project
 claude plugin install commit-commands --scope project
 ```
 
+### Recommended Claude Code Plugins (optional)
+
+```bash
+claude plugin install context7 --scope project
+claude plugin install skill-creator --scope project
+claude plugin install pr-review-toolkit --scope project
+claude plugin install plugin-dev --scope project
+```
+
 ## Installation
 
 ```bash

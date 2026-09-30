@@ -1,7 +1,7 @@
 ---
 name: start-day-external-context
 description: Use this agent when /start-day needs external context from calendar, email, and Slack. Runs in parallel with the git-state and active-work agents, and is skipped when `--no-external` is passed. Typical triggers include a daily briefing that should surface today's meetings and unread messages, and a session where some MCP integrations are unavailable and the gathering must degrade gracefully. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: sonnet
 color: magenta
 ---
 

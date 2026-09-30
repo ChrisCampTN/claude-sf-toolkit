@@ -1,7 +1,7 @@
 ---
 name: sf-toolkit-resolve
 description: Use this agent when a skill needs Salesforce project context — org aliases, API version, GitHub repo, team mapping. Every SF Toolkit skill dispatches it unless a valid cache exists. Typical triggers include a skill needing the target org alias before it can build a deployment, and a cached context that has expired ahead of a daily briefing. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: sonnet
 color: cyan
 tools: ["Read", "Bash", "Grep", "Glob", "Write", "mcp__Salesforce-DX__run_soql_query", "mcp__Salesforce-DX__get_username"]
 ---
