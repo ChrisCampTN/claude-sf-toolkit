@@ -91,7 +91,7 @@ claude --version
 claude plugin list
 ```
 
-Parse the output for tracked plugins. The tracked plugin list comes from `${CLAUDE_PLUGIN_ROOT}/scripts/check-dependencies.sh` — currently: `superpowers`, `commit-commands` (required) and `context7`, `skill-creator` (optional).
+Parse the output for tracked plugins. The tracked plugin list comes from `${CLAUDE_PLUGIN_ROOT}/scripts/check-dependencies.sh` — currently: `superpowers`, `commit-commands` (required) and `context7`, `skill-creator`, `pr-review-toolkit`, `plugin-dev` (optional).
 
 **Read last-reviewed state from report header:**
 
@@ -138,6 +138,8 @@ If either changed, report which have updates and continue:
   commit-commands: {last} -> {current} {NEW or unchanged}
   context7: {last} -> {current} {NEW or unchanged}
   skill-creator: {last} -> {current} {NEW or unchanged}
+  pr-review-toolkit: {last} -> {current} {NEW or unchanged}
+  plugin-dev: {last} -> {current} {NEW or unchanged}
 
 Proceeding with review for updated tool(s).
 ```
@@ -257,7 +259,7 @@ Update `docs/tooling-reviews/claude-code.md`.
 
 ```markdown
 **Claude Code Version:** {version}
-**Plugin Versions:** superpowers {v}, commit-commands {v}, context7 {v}, skill-creator {v}
+**Plugin Versions:** superpowers {v}, commit-commands {v}, context7 {v}, skill-creator {v}, pr-review-toolkit {v}, plugin-dev {v}
 **Last Reviewed:** {date}
 **Baseline Established:** {date}
 ```
@@ -376,6 +378,14 @@ Enumerate current Claude Code capabilities:
 
 Organize findings by area: hooks, agents, skills, MCP, plugins, permissions.
 
+### Step A1b — Skill Usage Scan
+
+Run `claude -p "/skill-doctor" --output-format text` (headless). It prints, per skill, context tokens, 7-day tokens, uses, and last-used, plus an "N skills loaded but never invoked" count and a "Plugins not used recently" list.
+
+Bucket every skill as **Heavy** (≥20 uses), **Light** (1–19 uses), or **Never** (0 uses). Feed the "Never" skills and the "Plugins not used recently" list into Step A2's discrepancies and into the Adoption Opportunities table.
+
+Never-invoked is per-machine: it reflects only this machine's usage history. Treat it as a prompt to check, not a verdict.
+
 ### Step A2 — Cross-Reference with Documentation
 
 Compare the capability scan against:
@@ -411,6 +421,14 @@ Add an audit subsection to "Recent Changes":
 
 - {finding 1}
 - {finding 2}
+
+**Usage snapshot:**
+
+| Bucket | Skills | Notes |
+| ------ | ------ | ----- |
+| Heavy (≥20 uses) | {count} | {names} |
+| Light (1–19 uses) | {count} | {names} |
+| Never | {count} | {names; plugins not used recently} |
 ```
 
 Update "Capabilities We Use" if the audit reveals usage not yet documented.

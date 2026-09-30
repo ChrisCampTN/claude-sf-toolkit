@@ -1,7 +1,7 @@
 ---
 name: start-day-active-work
 description: Use this agent when /start-day needs a unified view of active work across MEMORY.md, the backlog, and GitHub Issues. Runs in parallel with the git-state and external-context agents. Typical triggers include a daily briefing that must report what work is currently active, and a need to see that work split by assignee. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: sonnet
 color: yellow
 tools: ["Read", "Grep", "Glob", "Bash"]
 ---

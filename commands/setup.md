@@ -276,7 +276,7 @@ claude plugin list 2>/dev/null
 ```
 
 Required: `superpowers`, `commit-commands`
-Recommended: `context7`, `skill-creator`
+Recommended: `context7`, `skill-creator`, `pr-review-toolkit`, `plugin-dev`
 
 For any missing required plugins, install them:
 

@@ -1,7 +1,7 @@
 ---
 name: sf-toolkit-platform-brief
 description: Use this agent when generating or refreshing the platform brief (`docs/platform-brief.md`). Dispatched by /setup during initial configuration and by /platform-review when the brief is stale. Typical triggers include first-time setup where no brief exists yet, and an existing brief whose inventory no longer matches the org. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: sonnet
 color: green
 tools: ["Read", "Write", "Bash", "Grep", "Glob", "mcp__Salesforce-DX__run_soql_query", "mcp__Salesforce-DX__list_all_orgs"]
 ---

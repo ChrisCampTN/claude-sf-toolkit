@@ -27,7 +27,7 @@ FAILED=0
 mkdir -p "$T/bin"
 cat > "$T/bin/claude" <<'STUB'
 #!/bin/bash
-[ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ] && echo "superpowers commit-commands context7 skill-creator"
+[ "${1:-}" = "plugin" ] && [ "${2:-}" = "list" ] && echo "superpowers commit-commands context7 skill-creator pr-review-toolkit plugin-dev"
 exit 0
 STUB
 printf '#!/bin/bash\nexit 0\n' > "$T/bin/sf"

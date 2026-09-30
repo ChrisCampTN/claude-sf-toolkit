@@ -1,5 +1,60 @@
 # Claude SF Toolkit — Changelog
 
+## v2.2.0 (2026-09-29)
+
+### Added
+- **`/claude-review --audit` skill usage scan** — new Step A1b runs `claude -p "/skill-doctor" --output-format text`, buckets skills as Heavy / Light / Never, and feeds "Never" skills and "Plugins not used recently" into the discrepancy check and Adoption Opportunities. Never-invoked is per-machine — a prompt to check, not a verdict. The audit subsection template gains a "Usage snapshot" table
+- **Optional plugins tracked** — `pr-review-toolkit` and `plugin-dev` added to the recommended list in `scripts/check-dependencies.sh`
+- **SessionStart hook** — the recommended-plugin warning list now matches `check-dependencies.sh` (`context7`, `skill-creator`, `pr-review-toolkit`, `plugin-dev`)
+
+### Changed
+- **Agent models** — all five agents (`sf-toolkit-resolve`, `sf-toolkit-platform-brief`, `start-day-git-state`, `start-day-active-work`, `start-day-external-context`) now use `model: sonnet` instead of `inherit`. They do mechanical gathering, so they no longer run at the parent session's model rate. `sonnet` is an alias for the current Sonnet generation
+- **Docs** — README, `/setup`, and `/claude-review` Step 0 list the expanded optional plugin set
+- **Changelog** — backfilled v2.0.0 through v2.1.3
+
+## v2.1.3 (2026-09-02)
+
+### Added
+- **Stale-plugin warnings in the SessionStart hook** — warns when the marketplace clone holds a newer version than the installed plugin, and when the clone has not been refreshed in more than 14 days. No network call. Both warnings name the exact update command
+- **`scripts/test-session-start-staleness.sh`** — runs the real hook against a synthetic HOME with six cases
+
+## v2.1.2 (2026-09-02)
+
+### Changed
+- **Agent descriptions** — all five agents adopt plugin-dev's shape: a prose summary of triggers plus a pointer, with worked scenarios moved to a `## When to invoke` body section
+- **Validator** — the `<example>` check in `validate-plugin.js` is inverted: an `<example>` block in a description is now flagged, with warnings for a description with no pointer and a body with no matching section
+
+## v2.1.1 (2026-09-02)
+
+### Fixed
+- **`/deploy-changed`** — set `disable-model-invocation: true` so the model cannot deploy to a live org implicitly; the slash command is unchanged
+
+## v2.1.0 (2026-09-02)
+
+### Fixed
+- **`/wrap-up --review`** — points at Claude Code's built-in `code-review` skill instead of the `code-review` plugin, which is not a toolkit dependency. The `score >= 80` filter is replaced by verdict-based reporting (`CONFIRMED` / `PLAUSIBLE`)
+- **Agent frontmatter** — added the missing required `name` field to all five agents
+- **Dangling v2.0.0 references** — removed leftover DevOps Center and YAML/Salesforce backlog backend references (`plugin.json`, `CLAUDE.md`, `README.md`, `/setup`, `templates/sf-toolkit.json`)
+
+### Changed
+- **Command descriptions** — all commands now say when to use them; destructive skills carry anti-eager wording
+- **Validator** — `validate-plugin.js` requires `name` in agent frontmatter and flags stale `code-review:code-review` references
+- **CI** — `.github/workflows/claude-code-review.yml` uses the built-in `code-review` skill with `pull-requests: write`
+
+## v2.0.0 (2026-07-11)
+
+### Changed
+- **BREAKING: GitHub-only** — DevOps Center and the non-GitHub backlog backends are removed. GitHub Issues, Actions, and PRs are the sole DevOps and work-tracking backend; `--repo` is now required for backlog scripts and `--backend` accepts only `github`
+- **Resolver contract** — `workTracking` is a single GitHub shape; no DevOps Center ID resolution
+
+### Removed
+- **Skills** — `/devops-commit`, `/wi-sync`
+- **Backlog** — `prioritize` subcommand and `status:prioritized` label, `backlog-validate.js`, `templates/backlog.yaml`, `templates/tags.yaml`, the `devops-center` backlog workflow
+
+### Added
+- **Backlog** — `needs-review` label support in render and stats, `tag:{value}` label emission, stale-status warning for closed issues
+- **`/lookback`** — Step 3.5 audits existing memories; findings are classified mechanism-vs-memory; drafted feedback memories end with a "Working if:" signal
+
 ## v1.5.0 (2026-04-10)
 
 ### Added

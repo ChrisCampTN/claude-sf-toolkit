@@ -1,7 +1,7 @@
 ---
 name: start-day-git-state
 description: Use this agent when /start-day needs git repository state and org drift analysis. Runs in parallel with the active-work and external-context agents. Typical triggers include a daily briefing that must report uncommitted changes and branch status, and a drift check comparing org metadata against local source. See "When to invoke" in the agent body for worked scenarios.
-model: inherit
+model: sonnet
 color: blue
 tools: ["Read", "Bash", "Grep", "Glob", "mcp__Salesforce-DX__run_soql_query"]
 ---
