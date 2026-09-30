@@ -5,6 +5,7 @@
 ### Added
 - **`/claude-review --audit` skill usage scan** — new Step A1b runs `claude -p "/skill-doctor" --output-format text`, buckets skills as Heavy / Light / Never, and feeds "Never" skills and "Plugins not used recently" into the discrepancy check and Adoption Opportunities. Never-invoked is per-machine — a prompt to check, not a verdict. The audit subsection template gains a "Usage snapshot" table
 - **Optional plugins tracked** — `pr-review-toolkit` and `plugin-dev` added to the recommended list in `scripts/check-dependencies.sh`
+- **SessionStart hook** — the recommended-plugin warning list now matches `check-dependencies.sh` (`context7`, `skill-creator`, `pr-review-toolkit`, `plugin-dev`)
 
 ### Changed
 - **Agent models** — all five agents (`sf-toolkit-resolve`, `sf-toolkit-platform-brief`, `start-day-git-state`, `start-day-active-work`, `start-day-external-context`) now use `model: sonnet` instead of `inherit`. They do mechanical gathering, so they no longer run at the parent session's model rate. `sonnet` is an alias for the current Sonnet generation

@@ -127,7 +127,7 @@ for plugin in superpowers commit-commands; do
 done
 
 # Recommended plugins — warn only
-for plugin in context7 skill-creator; do
+for plugin in context7 skill-creator pr-review-toolkit plugin-dev; do
   if ! echo "$PLUGIN_LIST" | grep -q "$plugin"; then
     WARNINGS+=("Optional: claude plugin install $plugin --scope project")
   fi
